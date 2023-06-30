@@ -3,7 +3,7 @@ import pandas as pd
 from typing import List, Optional
 import sys
 
-from blastdb_cache import BlastDBCache
+from .blastdb_cache import BlastDBCache
 
 default_out_columns = ['qseqid',
  'sseqid',
