@@ -1,6 +1,6 @@
 import subprocess
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Dict
 import sys
 
 from .blastdb_cache import BlastDBCache
@@ -17,6 +17,8 @@ default_out_columns = ['qseqid',
  'send',
  'evalue',
  'bitscore']
+
+yes_no = ["no", "yes"]
 
 class BlastnSearch:
     """A search (alignment) to be made with blastn.
@@ -39,7 +41,9 @@ class BlastnSearch:
             evalue: float = 1e-20,
             out_columns: List[str] = default_out_columns,
             additional_columns: List[str] = [],
-            db_cache: Optional[BlastDBCache] = None
+            db_cache: Optional[BlastDBCache] = None,
+            threads: int = 1,
+            dust: bool = True,
     ):
         """Construct a BlastnSearch with the specified settings.
 
@@ -77,6 +81,8 @@ class BlastnSearch:
             out_columns:        Output columns to include in results.
             additional_columns: Additional output columns to include in results.
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
+            threads (int):      Number of threads to use for BLAST search.
+            dust (bool):        Filter low-complexity regions from search.
         """
         self._seq1_path = seq1_path
         self._seq2_path = seq2_path
@@ -84,6 +90,11 @@ class BlastnSearch:
         self._hits = None
         self._out_columns = list(out_columns + additional_columns)
         self._db_cache = db_cache
+        self._threads =  threads
+        self._dust = dust
+        # If you really need to add extra arguments, you can do it by setting
+        # the _extra_args attribute.
+        self._extra_args = []
 
     @property
     def seq1_path(self) -> str:
@@ -112,6 +123,17 @@ class BlastnSearch:
             self._get_hits()
         return self._hits
 
+    @property
+    def threads(self) -> int:
+        """Return the number of threads to use for the search."""
+        return self._threads
+
+    @property
+    def dust(self) -> bool:
+        """Return whether to filter low-complexity regions."""
+        return self._dust
+
+
     # def __len__(self) -> int:
     #     return len(self.hits)
 
@@ -130,8 +152,12 @@ class BlastnSearch:
             "-evalue",
             str(self.evalue),
             "-outfmt",
-            " ".join(["6"] + self._out_columns)
-        ]
+            " ".join(["6"] + self._out_columns),
+            "-num_threads",
+            str(self._threads),
+            "-dust",
+            yes_no[self._dust]
+        ] + self._extra_args
         #print(" ".join(command), file=sys.stderr)
         return command
             
