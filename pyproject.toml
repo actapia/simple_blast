@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simple_blast_actapia"
-version = "0.0.1"
+version = "0.0.3"
 authors = [
     { name = "Andrew Tapia", email = "andrew.tapia@uky.edu" }
 ]
