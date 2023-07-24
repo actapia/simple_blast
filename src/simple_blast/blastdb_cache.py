@@ -17,12 +17,12 @@ class BlastDBCache:
         self._cache = {}
         if find_existing:
             for path in Path(location).glob("*/*.nal"):
-                self._cache[read_nal_title(path)] = path.parent                
+                self._cache[Path(read_nal_title(path))] = path.parent / "db"
 
     def makedb(self, seq_file_path):
-        if seq_file_pth in self._cache:
-            return
         seq_file_path = Path(seq_file_path)
+        if seq_file_path in self._cache:
+            return
         seq_name = seq_file_path.stem
         tempdir = Path(
             tempfile.mkdtemp(

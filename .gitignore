@@ -3,3 +3,9 @@
 
 # ignore py caches
 __pycache__/
+
+dist/
+
+*.egg-info/
+
+.gitignore

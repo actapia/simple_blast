@@ -44,6 +44,8 @@ class BlastnSearch:
             db_cache: Optional[BlastDBCache] = None,
             threads: int = 1,
             dust: bool = True,
+            task: Optional[str] = None,
+            max_targets: int = 500,
     ):
         """Construct a BlastnSearch with the specified settings.
 
@@ -83,6 +85,8 @@ class BlastnSearch:
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
             threads (int):      Number of threads to use for BLAST search.
             dust (bool):        Filter low-complexity regions from search.
+            task (str):         Parameter preset to use.
+            max_targets (int):  Maximum mnumber of target seqs to include.
         """
         self._seq1_path = seq1_path
         self._seq2_path = seq2_path
@@ -92,6 +96,8 @@ class BlastnSearch:
         self._db_cache = db_cache
         self._threads =  threads
         self._dust = dust
+        self._task = task
+        self._max_targets = max_targets
         # If you really need to add extra arguments, you can do it by setting
         # the _extra_args attribute.
         self._extra_args = []
@@ -133,6 +139,16 @@ class BlastnSearch:
         """Return whether to filter low-complexity regions."""
         return self._dust
 
+    @property
+    def task(self) -> Optional[str]:
+        """Return the name of the parameter preset to use."""
+        return self._task
+
+    @property
+    def max_targets(self) -> int:
+        """Return the maximum number of target sequences."""
+        return self._max_targets
+
 
     # def __len__(self) -> int:
     #     return len(self.hits)
@@ -143,9 +159,11 @@ class BlastnSearch:
     def _build_blast_command(self):
         command = ["blastn"]
         if self._db_cache and self.seq1_path in self._db_cache:
-            command = command + ["-db", self._db_cache[self.seq1_path]]
+            command = command + ["-db", str(self._db_cache[self.seq1_path])]
         else:
             command = command + ["-subject", self.seq1_path]
+        if self._task is not None:
+            command = command + ["-task", self._task]
         command = command + [
             "-query",
             str(self.seq2_path),
@@ -156,7 +174,9 @@ class BlastnSearch:
             "-num_threads",
             str(self._threads),
             "-dust",
-            yes_no[self._dust]
+            yes_no[self._dust],
+            "-max_target_seqs",
+            str(self._max_targets)
         ] + self._extra_args
         #print(" ".join(command), file=sys.stderr)
         return command
@@ -173,3 +193,8 @@ class BlastnSearch:
             names=self._out_columns,
             delim_whitespace=True
         )
+        # from IPython import embed
+        # embed()
+        proc.communicate()
+        if proc.returncode:
+            raise subprocess.CalledProcessError(proc.returncode, proc.args)
