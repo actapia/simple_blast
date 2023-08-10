@@ -1,7 +1,6 @@
 import subprocess
 import pandas as pd
-from typing import List, Optional, Dict
-import sys
+from typing import List, Optional
 
 from .blastdb_cache import BlastDBCache
 
@@ -46,6 +45,7 @@ class BlastnSearch:
             dust: bool = True,
             task: Optional[str] = None,
             max_targets: int = 500,
+            n_seqidlist: Optional[str] = None,
     ):
         """Construct a BlastnSearch with the specified settings.
 
@@ -86,7 +86,8 @@ class BlastnSearch:
             threads (int):      Number of threads to use for BLAST search.
             dust (bool):        Filter low-complexity regions from search.
             task (str):         Parameter preset to use.
-            max_targets (int):  Maximum mnumber of target seqs to include.
+            max_targets (int):  Maximum number of target seqs to include.
+            n_seqidlist (str):  Specifies seqids to ignore.
         """
         self._seq1_path = seq1_path
         self._seq2_path = seq2_path
@@ -98,6 +99,7 @@ class BlastnSearch:
         self._dust = dust
         self._task = task
         self._max_targets = max_targets
+        self._negative_seqidlist = n_seqidlist
         # If you really need to add extra arguments, you can do it by setting
         # the _extra_args attribute.
         self._extra_args = []
@@ -149,6 +151,11 @@ class BlastnSearch:
         """Return the maximum number of target sequences."""
         return self._max_targets
 
+    @property
+    def negative_seqidlist(self) -> Optional[str]:
+        """Return a path to a list of sequence IDs to ignore."""
+        return self._negative_seqidlist
+
 
     # def __len__(self) -> int:
     #     return len(self.hits)
@@ -164,6 +171,11 @@ class BlastnSearch:
             command = command + ["-subject", self.seq1_path]
         if self._task is not None:
             command = command + ["-task", self._task]
+        if self._negative_seqidlist is not None:
+            command = command + [
+                "-negative_seqidlist",
+                self._negative_seqidlist
+            ]
         command = command + [
             "-query",
             str(self.seq2_path),
