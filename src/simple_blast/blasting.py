@@ -46,6 +46,7 @@ class BlastnSearch:
             task: Optional[str] = None,
             max_targets: int = 500,
             n_seqidlist: Optional[str] = None,
+            debug: bool = False
     ):
         """Construct a BlastnSearch with the specified settings.
 
@@ -103,6 +104,7 @@ class BlastnSearch:
         # If you really need to add extra arguments, you can do it by setting
         # the _extra_args attribute.
         self._extra_args = []
+        self.debug = debug
 
     @property
     def seq1_path(self) -> str:
@@ -209,4 +211,7 @@ class BlastnSearch:
         # embed()
         proc.communicate()
         if proc.returncode:
+            if self.debug:
+                from IPython import embed
+                embed()
             raise subprocess.CalledProcessError(proc.returncode, proc.args)
