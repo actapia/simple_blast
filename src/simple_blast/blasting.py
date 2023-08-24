@@ -29,9 +29,11 @@ class BlastnSearch:
     defined blastn search (if it hasn't been run already), parses the results,
     stores them in a pandas dataframe, and returns the result.
 
-    This class has no public attributes; the settings defined in the
-    constructor should be consided immutable. Nevertheless, the values passed to
-    the constructor may be retrieved through the class's properties.
+    Values passed to the constructor may be retrieved through the class's
+    properties.
+
+    Attributes:
+        debug (bool): Whether to enable debug features for this instance.
     """
     def __init__(
             self,
@@ -89,6 +91,7 @@ class BlastnSearch:
             task (str):         Parameter preset to use.
             max_targets (int):  Maximum number of target seqs to include.
             n_seqidlist (str):  Specifies seqids to ignore.
+            debug (bool):       Whether to enable debug features.
         """
         self._seq1_path = seq1_path
         self._seq2_path = seq2_path
