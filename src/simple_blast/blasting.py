@@ -1,8 +1,10 @@
 import subprocess
 import pandas as pd
+from collections.abc import Iterable
 from typing import List, Optional
+from pathlib import Path
 
-from .blastdb_cache import BlastDBCache
+from .blastdb_cache import BlastDBCache, to_path_iterable
 
 default_out_columns = ['qseqid',
  'sseqid',
@@ -18,6 +20,9 @@ default_out_columns = ['qseqid',
  'bitscore']
 
 yes_no = ["no", "yes"]
+
+class NotInDatabaseError(Exception):
+    pass
 
 class BlastnSearch:
     """A search (alignment) to be made with blastn.
@@ -37,8 +42,8 @@ class BlastnSearch:
     """
     def __init__(
             self,
-            seq1_path: str,
-            seq2_path: str,
+            subject: str | Path | Iterable[str] | Iterable[Path],
+            query: str | Path,
             evalue: float = 1e-20,
             out_columns: List[str] = default_out_columns,
             additional_columns: List[str] = [],
@@ -80,8 +85,8 @@ class BlastnSearch:
         them to the additional_columns parameter.
 
         Parameters:
-            seq1_path (str):    Path to query sequence FASTA file.
-            seq2_path (str):    Path to subject sequence FASTA file.
+            subject:            Path(s) to subject sequence FASTA file(s).
+            query:              Path to query sequence FASTA file.
             evalue (float):     Expect value cutoff to use in BLAST search.
             out_columns:        Output columns to include in results.
             additional_columns: Additional output columns to include in results.
@@ -93,11 +98,13 @@ class BlastnSearch:
             n_seqidlist (str):  Specifies seqids to ignore.
             debug (bool):       Whether to enable debug features.
         """
-        self._seq1_path = seq1_path
-        self._seq2_path = seq2_path
+        subject = to_path_iterable(subject, tuple)
+        query = Path(query)
+        self._seq1_path = subject
+        self._seq2_path = query
         self._evalue = evalue
         self._hits = None
-        self._out_columns = list(out_columns + additional_columns)
+        self._out_columns = tuple(out_columns + additional_columns)
         self._db_cache = db_cache
         self._threads =  threads
         self._dust = dust
@@ -110,13 +117,23 @@ class BlastnSearch:
         self.debug = debug
 
     @property
-    def seq1_path(self) -> str:
+    def query(self) -> Path:
         """Return the query sequence path."""
+        return self._seq2_path
+
+    @property
+    def subject(self) -> Iterable[Path]:
+        """Return the subject sequence paths."""
+        return self._seq1_path
+
+    @property
+    def seq1_path(self) -> str:
+        """Return the subject sequence paths."""
         return self._seq1_path
 
     @property
     def seq2_path(self) -> str:
-        """Return the subject sequence path."""
+        """Return the query sequence path."""
         return self._seq2_path
 
     @property
@@ -161,6 +178,11 @@ class BlastnSearch:
         """Return a path to a list of sequence IDs to ignore."""
         return self._negative_seqidlist
 
+    @property
+    def out_columns(self) -> tuple[str]:
+        """Return the list of columns to include in the output."""
+        return self._out_columns
+
 
     # def __len__(self) -> int:
     #     return len(self.hits)
@@ -170,10 +192,16 @@ class BlastnSearch:
 
     def _build_blast_command(self):
         command = ["blastn"]
+        # if self._db_cache and self.seq1_path not in self._db_cache:
+        #     print(self.seq1_path, "not in cache!")
+        #     from IPython import embed
+        #     embed()
         if self._db_cache and self.seq1_path in self._db_cache:
             command = command + ["-db", str(self._db_cache[self.seq1_path])]
+        elif len(self.seq1_path) > 1:
+            raise NotInDatabaseError("Must use DB cache for multiple subjects.")
         else:
-            command = command + ["-subject", self.seq1_path]
+            command = command + ["-subject", str(self.seq1_path[0])]
         if self._task is not None:
             command = command + ["-task", self._task]
         if self._negative_seqidlist is not None:
@@ -187,7 +215,7 @@ class BlastnSearch:
             "-evalue",
             str(self.evalue),
             "-outfmt",
-            " ".join(["6"] + self._out_columns),
+            " ".join(["6"] + list(self._out_columns)),
             "-num_threads",
             str(self._threads),
             "-dust",
@@ -208,7 +236,7 @@ class BlastnSearch:
         self._hits = pd.read_csv(
             proc.stdout,
             names=self._out_columns,
-            delim_whitespace=True
+            sep=r"\s+"
         )
         # from IPython import embed
         # embed()
