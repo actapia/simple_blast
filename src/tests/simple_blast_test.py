@@ -9,13 +9,6 @@ from pathlib import Path
 package_file_root = importlib.resources.files(__package__)
 data_dir = package_file_root / "data"
 
-
-# class DictSubsetTestCase(unittest.TestCase):
-
-
-# class PandasTestCase(unittest.TestCase):
-
-
 class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

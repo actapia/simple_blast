@@ -35,10 +35,6 @@ def read_nin_title(nin):
 title_parsers = {"*.njs": read_js_title, "*.nin": read_nin_title}
 
 def get_existing(location):
-    # for path in Path(location).glob("*/*.nal"):
-    #     yield read_nal_title(path), path.parent / "db"
-    # for path in Path(location).glob("*/*.njs"):
-    #     yield read_js_title(path), path.parent / "db"
     path_stems = set(
         map(
             lambda x: x.parent / x.name.split(".")[0],
