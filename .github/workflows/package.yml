@@ -9,6 +9,8 @@ permissions:
 
 jobs:
   release-build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
@@ -28,6 +30,12 @@ jobs:
         with:
           name: release-dists
           path: dist/
+
+      - name: Attach to release
+        run: |
+          gh release upload ${{github.event.release.tag_name}} dist/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   pypi-publish:
     runs-on: ubuntu-latest
