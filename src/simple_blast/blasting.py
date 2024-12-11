@@ -183,19 +183,8 @@ class BlastnSearch:
         """Return the list of columns to include in the output."""
         return self._out_columns
 
-
-    # def __len__(self) -> int:
-    #     return len(self.hits)
-
-    # def __iter__(self):
-    #     yield from self.hits
-
     def _build_blast_command(self):
         command = ["blastn"]
-        # if self._db_cache and self.seq1_path not in self._db_cache:
-        #     print(self.seq1_path, "not in cache!")
-        #     from IPython import embed
-        #     embed()
         if self._db_cache and self.seq1_path in self._db_cache:
             command = command + ["-db", str(self._db_cache[self.seq1_path])]
         elif len(self.seq1_path) > 1:
@@ -223,7 +212,6 @@ class BlastnSearch:
             "-max_target_seqs",
             str(self._max_targets)
         ] + self._extra_args
-        #print(" ".join(command), file=sys.stderr)
         return command
             
 
@@ -238,8 +226,6 @@ class BlastnSearch:
             names=self._out_columns,
             sep=r"\s+"
         )
-        # from IPython import embed
-        # embed()
         proc.communicate()
         if proc.returncode:
             if self.debug:
