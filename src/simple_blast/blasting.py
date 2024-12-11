@@ -53,6 +53,7 @@ class BlastnSearch:
             task: Optional[str] = None,
             max_targets: int = 500,
             n_seqidlist: Optional[str] = None,
+            perc_ident: int = 0,
             debug: bool = False
     ):
         """Construct a BlastnSearch with the specified settings.
@@ -96,6 +97,7 @@ class BlastnSearch:
             task (str):         Parameter preset to use.
             max_targets (int):  Maximum number of target seqs to include.
             n_seqidlist (str):  Specifies seqids to ignore.
+            perc_ident (int):   Percent identity cutoff.
             debug (bool):       Whether to enable debug features.
         """
         subject = to_path_iterable(subject, tuple)
@@ -111,6 +113,7 @@ class BlastnSearch:
         self._task = task
         self._max_targets = max_targets
         self._negative_seqidlist = n_seqidlist
+        self._perc_identity = perc_ident
         # If you really need to add extra arguments, you can do it by setting
         # the _extra_args attribute.
         self._extra_args = []
@@ -183,6 +186,11 @@ class BlastnSearch:
         """Return the list of columns to include in the output."""
         return self._out_columns
 
+    @property
+    def perc_identity(self) -> int:
+        """Return the percent identity cutoff to use."""
+        return self._perc_identity
+
     def _build_blast_command(self):
         command = ["blastn"]
         if self._db_cache and self.seq1_path in self._db_cache:
@@ -210,7 +218,9 @@ class BlastnSearch:
             "-dust",
             yes_no[self._dust],
             "-max_target_seqs",
-            str(self._max_targets)
+            str(self._max_targets),
+            "-perc_identity",
+            str(self._perc_identity)
         ] + self._extra_args
         return command
             

@@ -70,6 +70,7 @@ class TestBlastnSearch(SimpleBlastTestCase):
         task = "foo"
         max_targets = 100
         negative_seqidlist = "apples"
+        perc_ident = 90
         res = BlastnSearch(
             subject_path,
             query_path,
@@ -80,6 +81,7 @@ class TestBlastnSearch(SimpleBlastTestCase):
             task=task,
             max_targets=max_targets,
             n_seqidlist=negative_seqidlist,
+            perc_ident=90,
             debug=True            
         )
         self.assertEqual(res.evalue, evalue)
@@ -90,6 +92,7 @@ class TestBlastnSearch(SimpleBlastTestCase):
         self.assertEqual(res.max_targets, max_targets)
         self.assertEqual(res.negative_seqidlist, negative_seqidlist)
         self.assertTrue(res.debug)
+        self.assertEqual(res.perc_identity, perc_ident)
 
     def test_build_blast_command_basic(self):
         evalue = 1e-99
@@ -159,6 +162,7 @@ class TestBlastnSearch(SimpleBlastTestCase):
         #     kwargs
         # )
         # Test with other parameters.
+        perc_ident = 90
         args, kwargs = parse_blast_command(
             BlastnSearch(
                 subject_path,
@@ -169,7 +173,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
                 task=task,
                 max_targets=max_targets,
                 n_seqidlist=negative_seqidlist,
-                debug=True
+                debug=True,
+                perc_ident=perc_ident
             )._build_blast_command()[1:]
         )
         self.assertDictIsSubset(
@@ -179,7 +184,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
                 "dust": "no",
                 "task": str(task),
                 "max_target_seqs": str(max_targets),
-                "negative_seqidlist": negative_seqidlist
+                "negative_seqidlist": negative_seqidlist,
+                "perc_identity": str(perc_ident)
             },
             kwargs
         )
