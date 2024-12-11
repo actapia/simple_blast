@@ -71,3 +71,5 @@ search = BlastnSearch("seqs2.fasta", "seqs1.fasta", db_cache=cache)
 ```
 
 Now `search` will use the database we created for `seqs2.fasta`.
+
+<!-- This is a comment. -->
