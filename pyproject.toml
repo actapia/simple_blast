@@ -12,7 +12,8 @@ description =  "A simple library for executing BLAST searches with ncbi-blast+"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "pandas >= 1.5.3"
+    "pandas >= 1.5.3",
+    "dateparser >= 1.2.0"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
