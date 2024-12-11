@@ -5,6 +5,11 @@ on:
     branches: ["main", "multiple_subjects"]
     paths:
       - '**'
+      - '!.gitignore'
+      - '!.github/workflows/**'
+      - '.github/workflows/test.yml'
+      - '!LICENSE'
+      - '!.gitignore'
 
 jobs:
   test:
