@@ -3,11 +3,6 @@ name: test
 on:
   push:
     branches: ["main", "multiple_subjects"]
-    paths:
-      - '*'
-      - '!.gitignore'
-      - '!*.md'
-      - '!LICENSE'
 
 jobs:
   test:
