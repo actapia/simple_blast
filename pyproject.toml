@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -23,3 +23,7 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/actapia/simple_blast"
 "Bug Tracker" = "https://github.com/actapia/simple_blast"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["simple_blast"]
