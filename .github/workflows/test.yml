@@ -10,6 +10,7 @@ on:
       - '.github/workflows/test.yml'
       - '!LICENSE'
       - '!.gitignore'
+      - '!*.md'
 
 jobs:
   test:
