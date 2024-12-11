@@ -1,21 +1,24 @@
 import subprocess
 import tempfile
+import itertools
 from pathlib import Path
 from collections.abc import Iterable
+from collections import namedtuple
+from .blastdb import read_nin_metadata, UnsupportedDatabaseFormatException
 import json
 
-def read_nal_title(nal):
-    with open(nal, "r") as nal_file:
-        for l in nal_file:
-            if not l.startswith("#"):
-                split = l.rstrip().split(" ")
-                if split[0] == "TITLE":
-                    return frozenset(
-                        map(
-                            Path,
-                            split[1:]
-                        )
-                    )
+# def read_nal_title(nal):
+#     with open(nal, "r") as nal_file:
+#         for l in nal_file:
+#             if not l.startswith("#"):
+#                 split = l.rstrip().split(" ")
+#                 if split[0] == "TITLE":
+#                     return frozenset(
+#                         map(
+#                             Path,
+#                             split[1:]
+#                         )
+#                     )
 
 def read_js_title(js):
     with open(js, "r") as js_file:
@@ -26,11 +29,37 @@ def read_js_title(js):
             )
         )
 
+def read_nin_title(nin):
+    return frozenset(map(Path, read_nin_metadata(nin).title.split()))
+
+title_parsers = {"*.njs": read_js_title, "*.nin": read_nin_title}
+
 def get_existing(location):
-    for path in Path(location).glob("*/*.nal"):
-        yield read_nal_title(path), path.parent / "db"
-    for path in Path(location).glob("*/*.njs"):
-        yield read_js_title(path), path.parent / "db"
+    # for path in Path(location).glob("*/*.nal"):
+    #     yield read_nal_title(path), path.parent / "db"
+    # for path in Path(location).glob("*/*.njs"):
+    #     yield read_js_title(path), path.parent / "db"
+    path_stems = set(
+        map(
+            lambda x: x.parent / x.name.split(".")[0],
+            itertools.chain(
+                *map(
+                    Path(location).glob,
+                    [
+                        "*/*.njs",
+                        "*/*.nin"
+                    ]
+                )
+            )
+        )
+    )
+    for stem in path_stems:
+        for ext, parser in title_parsers.items():
+            try:
+                yield parser(next(stem.parent.glob(stem.name + ext))), stem
+                break
+            except (StopIteration, UnsupportedDatabaseFormatException):
+                pass
 
 
 def to_path_iterable(ix, cls=frozenset) -> Iterable[Path]:
