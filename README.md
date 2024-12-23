@@ -43,6 +43,114 @@ added to the list of default output columns.
 
 You can also specify an e-value cutoff through the `evalue` argument.
 
+### Sequences from memory
+
+`simple_blast` can handle BLAST searches with sequences stored in memory (i.e.,
+not in a file). It works with sequences stored as strings or in
+[BioPython](https://biopython.org/) `SeqRecord` objects.
+
+```python
+from Bio.SeqRecord import SeqRecord, Seq
+from simple_blast import BlastnSearch
+
+# Define some data.
+subjects = [
+    SeqRecord(
+	    Seq(
+		"AAGGCGTACGGGCCTTTCGCTTCCGAAAACTTCCTCTTAGGTCGCTGTTACTGGATGTCGAGTCAGCACA"
+		"TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGTATCGGT"
+		"AACAAATATCTTTGGGATACTACAGGAATATCCGTAGGAGTTCGCCGCGATTAGGTGCCTCGATGATATG"
+		"CAGCTGTCACTGGAGATAACACACTATGCAGCAGTAATGGATGTTATTGCTACTAAGGTTCCCTGTCACC"
+	    ),
+		id="My Sequence 1"
+	),
+    SeqRecord(
+	    Seq(
+		"TTCATTGGTGGGCTTTCTGGTTCACGCCCATCTCAATGTACATTTTCCGTGACGTGATGATAATCATAAC"
+		"TCGTTGGTAGTAATAGGGTAAGGGAATTTGGCAGGTAGTCGGGGCAAGACTGCCGTTACAAGCTAATCAT"
+		"CTGCCAACTAACTTTAGCCGTAATTGGCACTAACAGTTAACCTTCGCGCGTTTCTCAGTGTAGAGTGAGA"
+		"CTATGTGATTACTTTCAGCGCCCAGCGGTGGTAGGTAGTAAAAAGTGGCCACCGAACCGAATGCT"
+	    ),
+		id="My Sequence 2"
+	)
+]
+queries = [
+    SeqRecord(
+        Seq("TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"),
+        id="Query 1"
+    )
+]
+
+with BlastnSearch.from_sequences(subjects, queries) as search:
+    results = search.hits
+```
+
+or, using a list of strings:
+
+```python
+from simple_blast import BlastnSearch
+
+# Define some data.
+subjects = [
+    (
+        "AAGGCGTACGGGCCTTTCGCTTCCGAAAACTTCCTCTTAGGTCGCTGTTACTGGATGTCGAGTCAGCACA"
+        "TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGTATCGGT"
+        "AACAAATATCTTTGGGATACTACAGGAATATCCGTAGGAGTTCGCCGCGATTAGGTGCCTCGATGATATG"
+        "CAGCTGTCACTGGAGATAACACACTATGCAGCAGTAATGGATGTTATTGCTACTAAGGTTCCCTGTCACC"
+    ),
+    (
+        "TTCATTGGTGGGCTTTCTGGTTCACGCCCATCTCAATGTACATTTTCCGTGACGTGATGATAATCATAAC"
+        "TCGTTGGTAGTAATAGGGTAAGGGAATTTGGCAGGTAGTCGGGGCAAGACTGCCGTTACAAGCTAATCAT"
+        "CTGCCAACTAACTTTAGCCGTAATTGGCACTAACAGTTAACCTTCGCGCGTTTCTCAGTGTAGAGTGAGA"
+        "CTATGTGATTACTTTCAGCGCCCAGCGGTGGTAGGTAGTAAAAAGTGGCCACCGAACCGAATGCT"
+    )
+]
+queries = ["TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"]
+
+with BlastnSearch.from_sequences(subjects, queries) as search:
+    results = search.hits
+```
+
+When using a list of strings, sequences are automatically named `seq_i`, where
+i is the position of the sequence in the list.
+
+You can use `SeqRecords` together with lists of strings, and you can also use
+in-memory sequences together with files by providing the `subject` or `query`
+keyword arguments to `from_sequences`.
+
+```python
+BlastnSearch.from_sequences(["CATGAACTA"], query="seqs1.fasta")
+```
+
+Since using a context manager is slightly cumbersome, you can also use the
+`blastn_from_sequences` convenience function to get the hits for a search.
+
+```python
+from simple_blast import blastn_from_sequences
+
+# Define some data.
+subjects = [
+    (
+        "AAGGCGTACGGGCCTTTCGCTTCCGAAAACTTCCTCTTAGGTCGCTGTTACTGGATGTCGAGTCAGCACA"
+        "TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGTATCGGT"
+        "AACAAATATCTTTGGGATACTACAGGAATATCCGTAGGAGTTCGCCGCGATTAGGTGCCTCGATGATATG"
+        "CAGCTGTCACTGGAGATAACACACTATGCAGCAGTAATGGATGTTATTGCTACTAAGGTTCCCTGTCACC"
+    ),
+    (
+        "TTCATTGGTGGGCTTTCTGGTTCACGCCCATCTCAATGTACATTTTCCGTGACGTGATGATAATCATAAC"
+        "TCGTTGGTAGTAATAGGGTAAGGGAATTTGGCAGGTAGTCGGGGCAAGACTGCCGTTACAAGCTAATCAT"
+        "CTGCCAACTAACTTTAGCCGTAATTGGCACTAACAGTTAACCTTCGCGCGTTTCTCAGTGTAGAGTGAGA"
+        "CTATGTGATTACTTTCAGCGCCCAGCGGTGGTAGGTAGTAAAAAGTGGCCACCGAACCGAATGCT"
+    )
+]
+queries = ["TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"]
+
+results = blastn_from_sequences(subjects, queries)
+```
+
+**Note:** Searching from in-memory sequences is implemented using Unix FIFOs, so
+this feature currently will not work on Windows.
+
 ## DB caches
 
 When the same sequence file is used as a subject in multiple searches, it can be
@@ -71,5 +179,3 @@ search = BlastnSearch("seqs2.fasta", "seqs1.fasta", db_cache=cache)
 ```
 
 Now `search` will use the database we created for `seqs2.fasta`.
-
-<!-- This is a comment. -->
