@@ -3,8 +3,10 @@ import pandas as pd
 from collections.abc import Iterable
 from typing import List, Optional
 from pathlib import Path
+from contextlib import contextmanager, ExitStack
 
 from .blastdb_cache import BlastDBCache, to_path_iterable
+from .seqs import SeqsAsFile, SeqType
 
 default_out_columns = ['qseqid',
  'sseqid',
@@ -23,6 +25,12 @@ yes_no = ["no", "yes"]
 
 class NotInDatabaseError(Exception):
     pass
+
+def try_element_to_SeqType_list(x):
+    if isinstance(x, SeqType):
+        return [x]
+    else:
+        return x
 
 class BlastnSearch:
     """A search (alignment) to be made with blastn.
@@ -242,3 +250,48 @@ class BlastnSearch:
                 from IPython import embed
                 embed()
             raise subprocess.CalledProcessError(proc.returncode, proc.args)
+
+    @classmethod
+    @contextmanager
+    def from_sequences(
+            cls,
+            subject_seqs: Optional[Iterable[SeqType] | SeqType] = None,
+            query_seqs: Optional[Iterable[SeqType] | SeqType] = None,
+            **kwargs
+    ):
+        """Return a context for a BlastnSearch for the given sequences.
+
+        Since temporary files must be created to hold the sequences, this
+        function returns a context manager that automatically creates and later
+        deletes the temporary files.
+
+        Parameters:
+            subject_seqs: Sequences to use as subjects in the search.
+            query_seqs:   Sequences to use as queries in the search.
+
+        Returns:
+            A context manager that gives a BlastnSearch for the sequences.
+        """
+        seqs = {"subject": subject_seqs, "query": query_seqs}
+        seq_keys = list(seqs)
+        for k in seq_keys:            
+            seqs[k] = try_element_to_SeqType_list(seqs[k])
+        try:
+            with ExitStack() as stack:
+                for k, seq in seqs.items():
+                    if seq is not None:
+                        seq_file = SeqsAsFile(seq)
+                        stack.enter_context(seq_file)
+                        kwargs[k] = seq_file.name
+                yield cls(**kwargs)
+        finally:
+            pass
+
+def blastn_from_files(*args, **kwargs) -> pd.DataFrame:
+    """Return the blastn results for the provided sequence files."""
+    return BlastnSearch(*args, **kwargs).hits
+
+def blastn_from_sequences(*args, **kwargs) -> pd.DataFrame:
+    """Return the blastn results for the provided sequences."""
+    with BlastnSearch.from_sequences(*args, **kwargs) as search:
+        return search.hits

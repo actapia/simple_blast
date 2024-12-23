@@ -2,7 +2,8 @@ import os
 from simple_blast.blasting import (
     BlastnSearch,
     default_out_columns,
-    NotInDatabaseError
+    NotInDatabaseError,
+    blastn_from_files
 )
 from simple_blast.blastdb_cache import BlastDBCache
 from pathlib import Path
@@ -257,5 +258,27 @@ class TestBlastnSearch(SimpleBlastTestCase):
             list(search.hits.columns),
             default_out_columns + new_out_columns
         )
+
+    def test_blastn_from_files(self):
+        for subject in self.data_dir.glob("seqs_*.fasta"):
+            hits = blastn_from_files(
+                subject,
+                self.data_dir / "queries.fasta"
+            )
+            self.assertGreater(hits.shape[0], 0)
+            #self.assertEqual(5,4)
+            self.assertColumnsEqual(
+                hits.qseqid.str.removeprefix("from_"),
+                hits.sseqid
+            )
+            self.assertEqual(
+                list(hits.columns),
+                default_out_columns
+            )
+        hits = blastn_from_files(
+            self.data_dir / "no_matches.fasta",
+            self.data_dir / "queries.fasta"
+        )
+        self.assertEqual(hits.shape[0], 0)
         
 
