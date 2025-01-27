@@ -41,6 +41,12 @@ class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCas
         if not p.is_dir():
             raise AssertionError("{} is not a directory.".format(repr(str(p))))
 
+    def assertHasAttr(self, x, attr):
+        if not hasattr(x, attr):
+            raise AssertionError(
+                "{} does not have attribute {}.".format(repr(x), attr)
+            )
+
 def parse_blast_command(args):
     positional = []
     named = {}

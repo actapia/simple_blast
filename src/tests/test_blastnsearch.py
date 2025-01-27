@@ -1,4 +1,10 @@
 import os
+
+from pathlib import Path
+from contextlib import contextmanager
+
+import numpy as np
+
 from simple_blast.blasting import (
     BlastnSearch,
     default_out_columns,
@@ -6,8 +12,6 @@ from simple_blast.blasting import (
     blastn_from_files
 )
 from simple_blast.blastdb_cache import BlastDBCache
-from pathlib import Path
-from contextlib import contextmanager
 from .simple_blast_test import (
     SimpleBlastTestCase,
     parse_blast_command,
@@ -280,5 +284,28 @@ class TestBlastnSearch(SimpleBlastTestCase):
             self.data_dir / "queries.fasta"
         )
         self.assertEqual(hits.shape[0], 0)
+
+    def test_column_dtypes(self):
+        search = BlastnSearch(
+            self.data_dir / "seqs_0.fasta",
+            self.data_dir / "queries.fasta",
+        )
+        search.column_dtypes = search.column_dtypes | {"bitscore": np.float64}
+        self.assertEqual(search.hits["bitscore"].dtype, np.float64)
+        search = BlastnSearch(
+            self.data_dir / "seqs_0.fasta",
+            self.data_dir / "queries.fasta",
+        )
+        self.assertNotEqual(search.hits["bitscore"].dtype, np.float64)
+
+    def test_sstrand_categorical(self):
+        self.assertHasAttr(
+            BlastnSearch(
+                self.data_dir / "seqs_0.fasta",
+                self.data_dir / "queries.fasta",
+                additional_columns=["sstrand"]
+            ).hits["sstrand"],
+            "cat"
+        )
         
 

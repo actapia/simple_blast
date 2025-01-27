@@ -45,9 +45,15 @@ class BlastnSearch:
     Values passed to the constructor may be retrieved through the class's
     properties.
 
+    The class contains an attribute, column_dtypes, that optionally maps column
+    names to Pandas dtypes. Columns present in the column_dtypes dict will be
+    automatically converted to the specified dtype.
+
     Attributes:
         debug (bool): Whether to enable debug features for this instance.
     """
+    column_dtypes = {"sstrand": "category"}
+    
     def __init__(
             self,
             subject: str | Path | Iterable[str] | Iterable[Path],
@@ -244,6 +250,13 @@ class BlastnSearch:
             names=self._out_columns,
             sep=r"\s+"
         )
+        for col in self._out_columns:
+            try:
+                self._hits[col] = self._hits[col].astype(
+                    self.column_dtypes[col]
+                )
+            except KeyError:
+                pass
         proc.communicate()
         if proc.returncode:
             if self.debug:
