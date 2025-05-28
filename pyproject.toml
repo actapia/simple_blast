@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "simple_blast"
-version = "0.3.0"
+version = "0.4.0"
 authors = [
     { name = "Andrew Tapia", email = "andrew.tapia@uky.edu" }
 ]
@@ -15,11 +15,7 @@ dependencies = [
     "pandas >= 1.5.3",
     "dateparser >= 1.2.0"
 ]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
+license = "MIT"
 
 [project.urls]
 "Homepage" = "https://github.com/actapia/simple_blast"
