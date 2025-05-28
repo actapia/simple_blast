@@ -3,7 +3,11 @@ import pandas as pd
 import Bio
 import simple_blast.seqs
 from unittest.mock import patch, ANY
-from simple_blast.blasting import BlastnSearch, blastn_from_sequences
+from simple_blast.blasting import (
+    BlastnSearch,
+    blastn_from_sequences,
+    TabularBlastnSearch
+)
 from simple_blast.seqs import (
     SeqsAsFile,
     _write_fasta_fallback,
@@ -110,7 +114,7 @@ class TestSeqs(SimpleBlastTestCase):
         # With SeqIO.
         # Test with query and subject from seqs.
         for subject in seqio_subjects:
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject,
                     seqio_query
             ) as search:
@@ -125,14 +129,14 @@ class TestSeqs(SimpleBlastTestCase):
                 hits.qseqid.str.removeprefix("from_"),
                 hits.sseqid
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 seqio_no_matches,
                 seqio_query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         # Test with query from seqs.
         for subject in self.data_dir.glob("seqs_*.fasta"):
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject=subject,
                     query_seqs=seqio_query
             ) as search:
@@ -150,14 +154,14 @@ class TestSeqs(SimpleBlastTestCase):
                 hits.qseqid.str.removeprefix("from_"),
                 hits.sseqid
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 subject=self.data_dir / "no_matches.fasta",
                 query_seqs=seqio_query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         # Test with subject from seqs.
         for subject in seqio_subjects:
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject,
                     query=self.data_dir / "queries.fasta"
             ) as search:
@@ -175,7 +179,7 @@ class TestSeqs(SimpleBlastTestCase):
                 hits.qseqid.str.removeprefix("from_"),
                 hits.sseqid
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 seqio_no_matches,
                 query=self.data_dir / "queries.fasta"
         ) as search:
@@ -185,7 +189,7 @@ class TestSeqs(SimpleBlastTestCase):
         query = [str(s.seq) for s in seqio_query]
         no_matches = [str(s.seq) for s in seqio_no_matches]
         for i, subject in enumerate(subjects):
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject,
                     query
             ) as search:
@@ -208,14 +212,14 @@ class TestSeqs(SimpleBlastTestCase):
                     search.hits.sseqid.str.removeprefix("seq_")
                 ) + 3*i                
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 no_matches,
                 query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         # Hybrid.
         for i, subject in enumerate(subjects):
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject,
                     seqio_query
             ) as search:
@@ -238,13 +242,13 @@ class TestSeqs(SimpleBlastTestCase):
                     search.hits.sseqid.str.removeprefix("seq_")
                 ) + 3*i                
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 no_matches,
                 seqio_query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         for i, subject in enumerate(seqio_subjects):
-            with BlastnSearch.from_sequences(
+            with TabularBlastnSearch.from_sequences(
                     subject,
                     query
             ) as search:
@@ -267,7 +271,7 @@ class TestSeqs(SimpleBlastTestCase):
                     search.hits.sseqid.str.removeprefix("seq")
                 )
             )
-        with BlastnSearch.from_sequences(
+        with TabularBlastnSearch.from_sequences(
                 seqio_no_matches,
                 query
         ) as search:

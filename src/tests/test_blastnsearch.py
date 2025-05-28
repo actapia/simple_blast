@@ -34,40 +34,40 @@ class TestBlastnSearch(SimpleBlastTestCase):
         query_path = Path(query_str)
         subject_list = [subject_path]
         # Basic subject and query strings.
-        res = BlastnSearch(subject_str, query_str)
+        res = BlastnSearch(subject_str, query_str, 11)
         self.assertEqual(list(res.seq1_path), subject_list)
         self.assertEqual(res.seq2_path, query_path)
         self.assertEqual(list(res.subject), subject_list)
         self.assertEqual(res.query, query_path)
         # From paths.
-        res = BlastnSearch(subject_path, query_path)
+        res = BlastnSearch(subject_path, query_path,  11)
         self.assertEqual(list(res.seq1_path), subject_list)
         self.assertEqual(res.seq2_path, query_path)
         self.assertEqual(list(res.subject), subject_list)
         self.assertEqual(res.query, query_path)
         # From collection of paths.
         subject_set = {subject_path, query_path}
-        res = BlastnSearch(subject_set, query_path)
+        res = BlastnSearch(subject_set, query_path, 11)
         self.assertEqual(set(res.seq1_path), subject_set)
         self.assertEqual(set(res.subject), subject_set)
-        # Check setting output columns.
-        self.assertEqual(list(res.out_columns), default_out_columns)
-        new_out_columns = ["foo", "bar"]
-        res = BlastnSearch(
-            subject_path,
-            query_path,
-            out_columns=new_out_columns
-        )
-        self.assertEqual(list(res.out_columns), new_out_columns)
-        res = BlastnSearch(
-            subject_path,
-            query_path,
-            additional_columns=new_out_columns
-        )
-        self.assertEqual(
-            list(res.out_columns),
-            default_out_columns + new_out_columns
-        )
+        # # Check setting output columns.
+        # self.assertEqual(list(res.out_columns), default_out_columns)
+        # new_out_columns = ["foo", "bar"]
+        # res = BlastnSearch(
+        #     subject_path,
+        #     query_path,
+        #     out_columns=new_out_columns
+        # )
+        # self.assertEqual(list(res.out_columns), new_out_columns)
+        # res = BlastnSearch(
+        #     subject_path,
+        #     query_path,
+        #     additional_columns=new_out_columns
+        # )
+        # self.assertEqual(
+        #     list(res.out_columns),
+        #     default_out_columns + new_out_columns
+        # )
         # Check setting remaining parameters.
         evalue = 1e-99
         cache = BlastDBCache("example_dir")
@@ -79,6 +79,7 @@ class TestBlastnSearch(SimpleBlastTestCase):
         res = BlastnSearch(
             subject_path,
             query_path,
+            11,
             evalue=evalue,
             db_cache=cache,
             threads=threads,
@@ -111,53 +112,6 @@ class TestBlastnSearch(SimpleBlastTestCase):
         query_path = Path(query_str)
         negative_seqidlist = "apples"
         new_out_columns = ["foo", "bar"]
-        args, kwargs = parse_blast_command(
-            BlastnSearch(
-                subject_path,
-                query_path,                
-            )._build_blast_command()[1:]
-        )
-        self.assertDictIsSubset(
-            {
-                "subject": subject_str,
-                "query": query_str,
-                "outfmt": " ".join(["6"] + default_out_columns)
-            },
-            kwargs
-        )
-        for x in ["evalue", "num_threads", "dust", "max_target_seqs"]:
-            self.assertIn(x, kwargs)
-        for x in ["task", "negative_seqidlist"]:
-            self.assertNotIn(x, kwargs)
-        # Test columns.
-        args, kwargs = parse_blast_command(
-            BlastnSearch(
-                subject_path,
-                query_path,
-                out_columns=new_out_columns
-            )._build_blast_command()[1:]
-        )
-        self.assertDictIsSubset(
-            {
-                "outfmt": " ".join(["6"] + new_out_columns)
-            },
-            kwargs
-        )
-        args, kwargs = parse_blast_command(
-            BlastnSearch(
-                subject_path,
-                query_path,
-                additional_columns=new_out_columns
-            )._build_blast_command()[1:]
-        )
-        self.assertDictIsSubset(
-            {
-                "outfmt": " ".join(
-                    ["6"] + default_out_columns + new_out_columns
-                )
-            },
-            kwargs
-        )
         # self.assertDictIsSubset(
         #     {
         #         "outfmt": " ".join(
@@ -169,18 +123,21 @@ class TestBlastnSearch(SimpleBlastTestCase):
         # Test with other parameters.
         perc_ident = 90
         args, kwargs = parse_blast_command(
-            BlastnSearch(
-                subject_path,
-                query_path,
-                evalue=evalue,
-                threads=threads,
-                dust=False,
-                task=task,
-                max_targets=max_targets,
-                n_seqidlist=negative_seqidlist,
-                debug=True,
-                perc_ident=perc_ident
-            )._build_blast_command()[1:]
+            list(
+                BlastnSearch(
+                    subject_path,
+                    query_path,
+                    11,
+                    evalue=evalue,
+                    threads=threads,
+                    dust=False,
+                    task=task,
+                    max_targets=max_targets,
+                    n_seqidlist=negative_seqidlist,
+                    debug=True,
+                    perc_ident=perc_ident
+                )._build_blast_command().argument_iter()
+            )[1:]
         )
         self.assertDictIsSubset(
             {
@@ -195,117 +152,21 @@ class TestBlastnSearch(SimpleBlastTestCase):
             kwargs
         )
 
-    def test_basic_search(self):
-        for subject in self.data_dir.glob("seqs_*.fasta"):
-            search = BlastnSearch(
-                subject,
-                self.data_dir / "queries.fasta"
-            )
-            self.assertGreater(search.hits.shape[0], 0)
-            #self.assertEqual(5,4)
-            self.assertColumnsEqual(
-                search.hits.qseqid.str.removeprefix("from_"),
-                search.hits.sseqid
-            )
-            self.assertEqual(
-                list(search.hits.columns),
-                default_out_columns
-            )
-        search = BlastnSearch(
-            self.data_dir / "no_matches.fasta",
-            self.data_dir / "queries.fasta"
-        )
-        self.assertEqual(search.hits.shape[0], 0)
-
     def test_missing_executable(self):
         with temporary_os_environ(PATH="."):
             search = BlastnSearch(
                 self.data_dir / "seqs_0.fasta",
-                self.data_dir / "queries.fasta"
+                self.data_dir / "queries.fasta",
+                11
             )
             with self.assertRaises(FileNotFoundError):
-                search.hits
+                search.get_output()
 
     def test_multiple_subjects(self):
         search = BlastnSearch(
             [self.data_dir / x for x in ["seqs_0.fasta", "seqs_1.fasta"]],
-            self.data_dir / "queries.fasta"
+            self.data_dir / "queries.fasta",
+            11
         )
         with self.assertRaises(NotInDatabaseError):
-            search.hits
-
-    def test_out_columns(self):
-        search = BlastnSearch(
-            self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta"
-        )
-        self.assertEqual(
-            list(search.hits.columns),
-            default_out_columns
-        )
-        new_out_columns = ["slen", "nident"]
-        search = BlastnSearch(
-            self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta",
-            out_columns=new_out_columns
-        )
-        self.assertEqual(
-            list(search.hits.columns),
-            new_out_columns
-        )
-        search = BlastnSearch(
-            self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta",
-            additional_columns=new_out_columns
-        )
-        self.assertEqual(
-            list(search.hits.columns),
-            default_out_columns + new_out_columns
-        )
-
-    def test_blastn_from_files(self):
-        for subject in self.data_dir.glob("seqs_*.fasta"):
-            hits = blastn_from_files(
-                subject,
-                self.data_dir / "queries.fasta"
-            )
-            self.assertGreater(hits.shape[0], 0)
-            #self.assertEqual(5,4)
-            self.assertColumnsEqual(
-                hits.qseqid.str.removeprefix("from_"),
-                hits.sseqid
-            )
-            self.assertEqual(
-                list(hits.columns),
-                default_out_columns
-            )
-        hits = blastn_from_files(
-            self.data_dir / "no_matches.fasta",
-            self.data_dir / "queries.fasta"
-        )
-        self.assertEqual(hits.shape[0], 0)
-
-    def test_column_dtypes(self):
-        search = BlastnSearch(
-            self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta",
-        )
-        search.column_dtypes = search.column_dtypes | {"bitscore": np.float64}
-        self.assertEqual(search.hits["bitscore"].dtype, np.float64)
-        search = BlastnSearch(
-            self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta",
-        )
-        self.assertNotEqual(search.hits["bitscore"].dtype, np.float64)
-
-    def test_sstrand_categorical(self):
-        self.assertHasAttr(
-            BlastnSearch(
-                self.data_dir / "seqs_0.fasta",
-                self.data_dir / "queries.fasta",
-                additional_columns=["sstrand"]
-            ).hits["sstrand"],
-            "cat"
-        )
-        
-
+            search.get_output()

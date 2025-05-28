@@ -19,29 +19,45 @@ You can define a `blastn` search to be carried out using the `BlastnSearch`
 class. `BlastnSearch`objects are constructed with two required
 arguments&mdash;the subject sequence and the query sequence files, in that
 order. For example, to set up a `balstn` search for sequences in `seqs1.fasta`
-against those in `seqs2.fasta`, you could construct a `BlastnSearch` object like
-this:
+against those in `seqs2.fasta` using output format 11 (BLAST Archive ASN.1), you
+could construct a `BlastnSearch` object like this:
 
 ```python
 from simple_blast import BlastnSearch
 
-search = BlastnSearch("seqs2.fasta", "seqs1.fasta")
+search = BlastnSearch("seqs2.fasta", "seqs1.fasta", 11)
 ```
 
-The BLAST search is not carried out until you ask for the results by accessing
-the `hits` property of the search. This property returns a Pandas dataframe
-containing the HSPs identified in the BLAST search.
+The BLAST search is not carried out until you ask for the results by running the
+`get_output()` function.
+
+```python
+results = search.get_output()
+```
+
+`blastn` can output binary data, so the `get_output()` function appropriately
+returns `bytes`.
+
+Often, it's convenient to use output format 6, a tabular representation of the
+HSPs. For that purpose, you can use `TabularBlastnSearch`.
+
+```python
+from simple_blast import TabularBlastnSearch
+
+search = TabularBlastnSearch("seqs2.fasta", "seqs1.fasta", 11)
+```
+
+The `hits` property of the search returns a Pandas dataframe containing the HSPs
+identified in the BLAST search.
 
 ```python
 results = search.hits
 ```
 
 The columns in the output may be configured by passing either the `out_columns`
-or `additional_columns` arguments when constructing the `BlastnSearch`. The
-former argument overrides the set of output columns; the latter argument is
-added to the list of default output columns.
-
-You can also specify an e-value cutoff through the `evalue` argument.
+or `additional_columns` arguments when constructing the
+`TabularBlastnSearch`. The former argument overrides the set of output columns;
+the latter argument is added to the list of default output columns.
 
 ### Sequences from memory
 
@@ -51,7 +67,7 @@ not in a file). It works with sequences stored as strings or in
 
 ```python
 from Bio.SeqRecord import SeqRecord, Seq
-from simple_blast import BlastnSearch
+from simple_blast import TabularBlastnSearch
 
 # Define some data.
 subjects = [
@@ -81,14 +97,14 @@ queries = [
     )
 ]
 
-with BlastnSearch.from_sequences(subjects, queries) as search:
+with TabularBlastnSearch.from_sequences(subjects, queries) as search:
     results = search.hits
 ```
 
 or, using a list of strings:
 
 ```python
-from simple_blast import BlastnSearch
+from simple_blast import TabularBlastnSearch
 
 # Define some data.
 subjects = [
@@ -107,7 +123,7 @@ subjects = [
 ]
 queries = ["TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"]
 
-with BlastnSearch.from_sequences(subjects, queries) as search:
+with TabularBlastnSearch.from_sequences(subjects, queries) as search:
     results = search.hits
 ```
 

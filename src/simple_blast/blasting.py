@@ -1,11 +1,13 @@
 import subprocess
 import pandas as pd
+import io
 from collections.abc import Iterable
 from typing import List, Optional
 from pathlib import Path
 from contextlib import contextmanager, ExitStack
 
 from .blastdb_cache import BlastDBCache, to_path_iterable
+from .blast_command import Command
 from .seqs import SeqsAsFile, SeqType
 
 default_out_columns = ['qseqid',
@@ -52,15 +54,13 @@ class BlastnSearch:
     Attributes:
         debug (bool): Whether to enable debug features for this instance.
     """
-    column_dtypes = {"sstrand": "category"}
-    
+
     def __init__(
             self,
             subject: str | Path | Iterable[str] | Iterable[Path],
             query: str | Path,
+            out_format: int | str,
             evalue: float = 1e-20,
-            out_columns: List[str] = default_out_columns,
-            additional_columns: List[str] = [],
             db_cache: Optional[BlastDBCache] = None,
             threads: int = 1,
             dust: bool = True,
@@ -68,7 +68,7 @@ class BlastnSearch:
             max_targets: int = 500,
             n_seqidlist: Optional[str] = None,
             perc_ident: int = 0,
-            debug: bool = False
+            debug: bool = False,
     ):
         """Construct a BlastnSearch with the specified settings.
 
@@ -78,33 +78,11 @@ class BlastnSearch:
         Optionally, the caller may provide an expect value cutoff to use for the
         search. If no value is provided, a default evalue of 1e-20 will be used.
 
-        The caller may specify what columns should be included in the output.
-        By default, the included columns are
-
-            sseqid
-            pident
-            length
-            mismatcch
-            gapopen
-            qstart
-            qend
-            sstart
-            send
-            evalue
-            bitscore
-
-        Explanations of these columns may be found at
-        https://www.metagenomics.wiki/tools/blast/blastn-output-format-6
-
-        If the caller desires to include additional columns, it may provide
-        them to the additional_columns parameter.
-
         Parameters:
             subject:            Path(s) to subject sequence FASTA file(s).
             query:              Path to query sequence FASTA file.
+            out_format:         Output format to use.
             evalue (float):     Expect value cutoff to use in BLAST search.
-            out_columns:        Output columns to include in results.
-            additional_columns: Additional output columns to include in results.
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
             threads (int):      Number of threads to use for BLAST search.
             dust (bool):        Filter low-complexity regions from search.
@@ -113,14 +91,14 @@ class BlastnSearch:
             n_seqidlist (str):  Specifies seqids to ignore.
             perc_ident (int):   Percent identity cutoff.
             debug (bool):       Whether to enable debug features.
-        """
+    """
         subject = to_path_iterable(subject, tuple)
         query = Path(query)
         self._seq1_path = subject
         self._seq2_path = query
+        self._out_format = out_format
         self._evalue = evalue
         self._hits = None
-        self._out_columns = tuple(out_columns + additional_columns)
         self._db_cache = db_cache
         self._threads =  threads
         self._dust = dust
@@ -132,6 +110,7 @@ class BlastnSearch:
         # the _extra_args attribute.
         self._extra_args = []
         self.debug = debug
+
 
     @property
     def query(self) -> Path:
@@ -164,13 +143,6 @@ class BlastnSearch:
         return self._db_cache
 
     @property
-    def hits(self) -> pd.DataFrame:
-        """Return a dataframe containing this search's BLAST results."""
-        if self._hits is None:
-            self._get_hits()
-        return self._hits
-
-    @property
     def threads(self) -> int:
         """Return the number of threads to use for the search."""
         return self._threads
@@ -196,74 +168,36 @@ class BlastnSearch:
         return self._negative_seqidlist
 
     @property
-    def out_columns(self) -> tuple[str]:
-        """Return the list of columns to include in the output."""
-        return self._out_columns
-
-    @property
     def perc_identity(self) -> int:
         """Return the percent identity cutoff to use."""
         return self._perc_identity
 
     def _build_blast_command(self):
-        command = ["blastn"]
+        command = Command()
+        command += ["blastn"]
         if self._db_cache and self.seq1_path in self._db_cache:
-            command = command + ["-db", str(self._db_cache[self.seq1_path])]
+            command |= {"-db": str(self._db_cache[self.seq1_path])}
         elif len(self.seq1_path) > 1:
             raise NotInDatabaseError("Must use DB cache for multiple subjects.")
         else:
-            command = command + ["-subject", str(self.seq1_path[0])]
+            command |= {"-subject": str(self.seq1_path[0])}
         if self._task is not None:
-            command = command + ["-task", self._task]
+            command |= {"-task": self._task}
         if self._negative_seqidlist is not None:
-            command = command + [
-                "-negative_seqidlist",
-                self._negative_seqidlist
-            ]
-        command = command + [
-            "-query",
-            str(self.seq2_path),
-            "-evalue",
-            str(self.evalue),
-            "-outfmt",
-            " ".join(["6"] + list(self._out_columns)),
-            "-num_threads",
-            str(self._threads),
-            "-dust",
-            yes_no[self._dust],
-            "-max_target_seqs",
-            str(self._max_targets),
-            "-perc_identity",
-            str(self._perc_identity)
-        ] + self._extra_args
+            command |= {"-negative_seqidlist": self._negative_seqidlist}
+        command |= {
+            "-query": str(self.seq2_path),
+            "-evalue": str(self.evalue),
+            "-outfmt": self._out_format,
+            # " ".join([str(self._out_format)] + list(self._out_columns)),
+            "-num_threads": str(self._threads),
+            "-dust": yes_no[self._dust],
+            "-max_target_seqs": str(self._max_targets),
+            "-perc_identity": str(self._perc_identity)
+        }
+        command += self._extra_args
         return command
-            
-
-    def _get_hits(self):
-        proc = subprocess.Popen(
-            self._build_blast_command(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        self._hits = pd.read_csv(
-            proc.stdout,
-            names=self._out_columns,
-            sep=r"\s+"
-        )
-        for col in self._out_columns:
-            try:
-                self._hits[col] = self._hits[col].astype(
-                    self.column_dtypes[col]
-                )
-            except KeyError:
-                pass
-        proc.communicate()
-        if proc.returncode:
-            if self.debug:
-                from IPython import embed
-                embed()
-            raise subprocess.CalledProcessError(proc.returncode, proc.args)
-
+        
     @classmethod
     @contextmanager
     def from_sequences(
@@ -300,11 +234,127 @@ class BlastnSearch:
         finally:
             pass
 
+    def _run(self):
+        return subprocess.Popen(
+            list(self._build_blast_command().argument_iter()),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+    def get_output(self):
+        proc = self._run()
+        res, _ = proc.communicate()
+        if proc.returncode:
+            if self.debug:
+                from IPython import embed
+                embed()
+            raise subprocess.CalledProcessError(proc.returncode, proc.args)
+        return res
+
+class TabularBlastnSearch(BlastnSearch):
+    column_dtypes = {"sstrand": "category"}
+    
+    def __init__(
+            self,
+            subject: str | Path | Iterable[str] | Iterable[Path],
+            query: str | Path,
+            out_columns: List[str] = default_out_columns,
+            additional_columns: List[str] = [],
+            *args,
+            **kwargs
+    ):
+        """Construct a BlastnSearch with tabular output parsed by Pandas.
+
+        This constructor requires paths to FASTA files containing the query and
+        subject sequences to use in the search.
+
+        Optionally, the caller may provide an expect value cutoff to use for the
+        search. If no value is provided, a default evalue of 1e-20 will be used.
+
+        The caller may specify what columns should be included in the output.
+        By default, the included columns are
+
+            sseqid
+            pident
+            length
+            mismatcch
+            gapopen
+            qstart
+            qend
+            sstart
+            send
+            evalue
+            bitscore
+
+        Explanations of these columns may be found at
+        https://www.metagenomics.wiki/tools/blast/blastn-output-format-6
+
+        If the caller desires to include additional columns, it may provide
+        them to the additional_columns parameter.
+
+        For a list of parameters accepted for constructing any BlastnSearch
+        object, see the documentation for BlastnSearch.
+
+        Parameters:
+            subject:            Path(s) to subject sequence FASTA file(s).
+            query:              Path to query sequence FASTA file.
+            out_columns:        Output columns to include in results.
+            additional_columns: Additional output columns to include in results.            
+        """
+        super().__init__(subject, query, 6, *args, **kwargs)
+        self._out_columns = tuple(out_columns + additional_columns)
+
+    @property
+    def out_columns(self) -> tuple[str]:
+        """Return the list of columns to include in the output."""
+        return self._out_columns
+
+    @property
+    def hits(self) -> pd.DataFrame:
+        """Return a dataframe containing this search's BLAST results."""
+        if self._hits is None:
+            self._get_hits()
+        return self._hits
+
+    def _build_blast_command(self):
+        command = super()._build_blast_command()
+        command.set(
+            "-outfmt",
+            " ".join([str(command.get("-outfmt"))] + list(self._out_columns))
+        )
+        return command
+
+    def _get_hits(self):
+        self._hits = pd.read_csv(
+            io.BytesIO(self.get_output()),
+            names=self._out_columns,
+            sep=r"\s+"
+        )
+        # proc = self._run()
+        # self._hits = pd.read_csv(
+        #     proc.stdout,
+        #     names=self._out_columns,
+        #     sep=r"\s+"
+        # )
+        for col in self._out_columns:
+            try:
+                self._hits[col] = self._hits[col].astype(
+                    self.column_dtypes[col]
+                )
+            except KeyError:
+                pass
+        # proc.communicate()
+        # if proc.returncode:
+        #     if self.debug:
+        #         from IPython import embed
+        #         embed()
+        #     raise subprocess.CalledProcessError(proc.returncode, proc.args)
+
 def blastn_from_files(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequence files."""
-    return BlastnSearch(*args, **kwargs).hits
+    return TabularBlastnSearch(*args, **kwargs).hits
 
 def blastn_from_sequences(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequences."""
-    with BlastnSearch.from_sequences(*args, **kwargs) as search:
+    with TabularBlastnSearch.from_sequences(*args, **kwargs) as search:
         return search.hits

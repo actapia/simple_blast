@@ -2,7 +2,7 @@ import tempfile
 import shutil
 import os
 from simple_blast.blastdb_cache import BlastDBCache, get_existing
-from simple_blast.blasting import BlastnSearch
+from simple_blast.blasting import BlastnSearch, TabularBlastnSearch
 from .simple_blast_test import (
     SimpleBlastTestCase,
     parse_blast_command
@@ -128,7 +128,7 @@ class TestBlastDBCache(SimpleBlastTestCase):
             # Delete files used to make DBs to ensure we don't use them.
             for f in temp_files.values():
                 os.remove(f.name)
-            search = BlastnSearch(
+            search = TabularBlastnSearch(
                 temp_files[self.data_dir / "seqs_0.fasta"].name,
                 self.data_dir / "queries.fasta",
                 db_cache=cache
@@ -137,7 +137,7 @@ class TestBlastDBCache(SimpleBlastTestCase):
                 list(search.hits.sseqid),
                 ["seq0"]
             )
-            search = BlastnSearch(
+            search = TabularBlastnSearch(
                 files,
                 self.data_dir / "queries.fasta",
                 db_cache=cache
