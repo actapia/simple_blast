@@ -22,7 +22,7 @@ class Command:
             if self._mult[name] == 1:
                 cnt = 0
             else:
-                raise ValueError(
+                raise KeyError(
                     ("More than one argument named {}, "
                      "must specify which to get.").format(name)
                 )
@@ -34,11 +34,18 @@ class Command:
         if cnt is None:
             if self._mult[name] == 1:
                 cnt = 0
-            else:
-                raise ValueError(
+            elif self._mult[name] > 1:
+                raise KeyError(
                     ("More than one argument named {}, "
                      "must specify which to set.").format(name)
                 )
+            else:
+                raise KeyError(
+                    ("Argument {} not in command. "
+                     "To insert a new argument, use add_argument."
+                     ).format(name)
+                )
+                    
         if cnt >= self._mult[name]:
             raise KeyError(f"Value {cnt} for {name} does not exist.")
         self._dict[(name, cnt)] = value

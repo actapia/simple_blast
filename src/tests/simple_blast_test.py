@@ -3,11 +3,16 @@ import tempfile
 import os
 import shutil
 import importlib.resources
+import pandas.testing
 
 from pathlib import Path
 
 package_file_root = importlib.resources.files(__package__)
 data_dir = package_file_root / "data"
+
+def multi_glob(path, *patterns):
+    for p in patterns:
+        yield from path.glob(p)
 
 class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCase):
     def setUp(self):
@@ -15,7 +20,7 @@ class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCas
         os.chdir(self.temp_dir.name)
         self.data_dir = Path("data")
         self.data_dir.mkdir()
-        for f in data_dir.glob("*.fasta"):
+        for f in multi_glob(data_dir, "*.fasta", "*.asn1"):
             shutil.copy(f, self.data_dir.name)
 
     def tearDown(self):
@@ -24,7 +29,11 @@ class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCas
         
         
     def assertColumnsEqual(self, a, b):
-        return self.assertEqual(list(a.items()), list(b.items()))
+        # return self.assertEqual(list(a.items()), list(b.items()))
+        return pandas.testing.assert_series_equal(a, b, check_names=False)
+
+    def assertDataFramesEqual(self, a, b):
+        return pandas.testing.assert_frame_equal(a, b)
 
     def assertDictIsSubset(self, a, b):
         for k, v in a.items():

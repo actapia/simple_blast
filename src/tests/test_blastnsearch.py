@@ -147,7 +147,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
                 "task": str(task),
                 "max_target_seqs": str(max_targets),
                 "negative_seqidlist": negative_seqidlist,
-                "perc_identity": str(perc_ident)
+                "perc_identity": str(perc_ident),
+                "outfmt": str(11)
             },
             kwargs
         )

@@ -34,7 +34,18 @@ def try_element_to_SeqType_list(x):
     else:
         return x
 
-class BlastnSearch:
+class BlastnSearchMetaclass(type):
+    registry = {}
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            for fmt in self.out_formats:
+                type(self).registry[fmt] = self
+        except AttributeError:
+            pass
+
+class BlastnSearch(metaclass=BlastnSearchMetaclass):
     """A search (alignment) to be made with blastn.
 
     This class provides a programmer-friendly way to define the parameters of a
@@ -172,6 +183,11 @@ class BlastnSearch:
         """Return the percent identity cutoff to use."""
         return self._perc_identity
 
+    @property
+    def out_format(self) -> int | str:
+        """Return the output format to use for the search output."""
+        return self._out_format
+
     def _build_blast_command(self):
         command = Command()
         command += ["blastn"]
@@ -251,8 +267,15 @@ class BlastnSearch:
             raise subprocess.CalledProcessError(proc.returncode, proc.args)
         return res
 
+    @classmethod
+    def _load_results(cls, res, *args, **kwargs):
+        search = cls(*args, **kwargs)
+        # BlastnSearch does not store results, so there's nothing to load.
+        return search
+
 class TabularBlastnSearch(BlastnSearch):
     column_dtypes = {"sstrand": "category"}
+    out_formats = [6, 7]
     
     def __init__(
             self,
@@ -301,7 +324,13 @@ class TabularBlastnSearch(BlastnSearch):
             out_columns:        Output columns to include in results.
             additional_columns: Additional output columns to include in results.            
         """
-        super().__init__(subject, query, 6, *args, **kwargs)
+        super().__init__(
+            subject,
+            query,
+            type(self).out_formats[0],
+            *args,
+            **kwargs
+        )
         self._out_columns = tuple(out_columns + additional_columns)
 
     @property
@@ -324,18 +353,15 @@ class TabularBlastnSearch(BlastnSearch):
         )
         return command
 
+    @classmethod
+    def parse_hits(cls, hits, columns):
+        return pd.read_csv(hits, names=columns, sep=r"\s+")
+
     def _get_hits(self):
-        self._hits = pd.read_csv(
+        self._hits = type(self).parse_hits(
             io.BytesIO(self.get_output()),
-            names=self._out_columns,
-            sep=r"\s+"
+            self._out_columns
         )
-        # proc = self._run()
-        # self._hits = pd.read_csv(
-        #     proc.stdout,
-        #     names=self._out_columns,
-        #     sep=r"\s+"
-        # )
         for col in self._out_columns:
             try:
                 self._hits[col] = self._hits[col].astype(
@@ -343,12 +369,21 @@ class TabularBlastnSearch(BlastnSearch):
                 )
             except KeyError:
                 pass
-        # proc.communicate()
-        # if proc.returncode:
-        #     if self.debug:
-        #         from IPython import embed
-        #         embed()
-        #     raise subprocess.CalledProcessError(proc.returncode, proc.args)
+
+    @classmethod
+    def _load_results(cls, res, **kwargs):
+        try:
+            out_split = str(kwargs["out_format"]).split()
+            out_format = int(out_split[0])
+            assert out_format in cls.out_formats
+            del kwargs["out_format"]
+            if out_split[1:]:
+                kwargs["out_columns"] = out_split[1:]
+        except KeyError:
+            pass
+        search = cls(**kwargs)
+        search._hits = cls.parse_hits(io.BytesIO(res), search.out_columns)
+        return search
 
 def blastn_from_files(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequence files."""
@@ -358,3 +393,16 @@ def blastn_from_sequences(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequences."""
     with TabularBlastnSearch.from_sequences(*args, **kwargs) as search:
         return search.hits
+
+def formatted_blastn_search(out_format):
+    """Return an appropriate constructor for the given output format."""
+    try:
+        split = out_format.split()
+        out_format = split[0]
+    except AttributeError:
+        pass
+    out_format = int(out_format)
+    return BlastnSearchMetaclass.registry.get(
+        out_format,
+        BlastnSearch,
+    )
