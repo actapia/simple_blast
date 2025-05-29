@@ -204,7 +204,7 @@ formats. ncbi-blast+ comes with a utility, `blast_formatter`, that can convert
 output in the "Blast4 Archive" format (ASN.1, output format 11) to any other
 BLAST format.
 
-## Using `blast_formatter` with `simple_blast.convert`
+### Using `blast_formatter` with `simple_blast.convert`
 
 You can use `blast_formatter` directly with the `simple_blast.convert`
 module. For example,
@@ -224,7 +224,7 @@ seqalign_bytes = blast_format_file(12, "my_blast_results.asn1")
 
 You can also use the similar `blast_format_bytes` to provide bytes as input.
 
-## Using `MultiformatBlastnSearch`
+### Using `MultiformatBlastnSearch`
 
 You can create a search with output format 11 using the
 `MultiformatBlastnSearch` class.
