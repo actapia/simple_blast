@@ -1,8 +1,9 @@
 # simple_blast
 
-This is a library that provides a very basic wrapper around ncbi-blast+.
-Currently, the library supports searches with `blastn` only, but I may expand
-the library to include wrappers for other BLAST executables if I need them.
+This is a library that provides a (decreasingly) basic wrapper around
+ncbi-blast+.  Currently, the library supports searches with `blastn` only, but I
+may expand the library to include wrappers for other BLAST executables if I need
+them.
 
 ## Requirements
 
@@ -195,3 +196,55 @@ search = BlastnSearch("seqs2.fasta", "seqs1.fasta", db_cache=cache)
 ```
 
 Now `search` will use the database we created for `seqs2.fasta`.
+
+## Format conversions
+
+It's sometimes useful to convert between different BLAST output
+formats. ncbi-blast+ comes with a utility, `blast_formatter`, that can convert
+output in the "Blast4 Archive" format (ASN.1, output format 11) to any other
+BLAST format.
+
+## Using `blast_formatter` with `simple_blast.convert`
+
+You can use `blast_formatter` directly with the `simple_blast.convert`
+module. For example,
+
+```python
+from simple_blast.convert import blast_format_file
+
+# Convert to output format 11.
+blast_format_file(12, "my_blast_results.asn1", "my_blast_results.json")
+```
+
+If you don't specify the output file, you can get the output as bytes.
+
+```python
+seqalign_bytes = blast_format_file(12, "my_blast_results.asn1")
+```
+
+You can also use the similar `blast_format_bytes` to provide bytes as input.
+
+## Using `MultiformatBlastnSearch`
+
+You can create a search with output format 11 using the
+`MultiformatBlastnSearch` class.
+
+```python
+from simple_blast.multiformat import MultiformatBlastnSearch
+
+search = MultiformatBlastnSearch("seqs2.fasta", "seqs1.fasta")
+```
+
+You can convert the output to another format using the `to` method.
+
+```python
+seqalign_bytes = search.to(12)
+```
+
+For output formats with an associated subclass of `BlastnSearch`, you can also
+convert directly to that subclass with `to_search`..
+
+```python
+tabular_search = search.to_search(6)
+results = tabular_search.hits # A Pandas DataFrame
+```
