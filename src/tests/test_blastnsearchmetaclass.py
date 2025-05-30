@@ -3,6 +3,7 @@ from simple_blast.blasting import (
     BlastnSearchMetaclass
 )
 from simple_blast.multiformat import MultiformatBlastnSearch
+from simple_blast.sam import SAMBlastnSearch
 from .simple_blast_test import (
     SimpleBlastTestCase,
 )
@@ -13,7 +14,8 @@ class TestBlastnSearchMetaclass(SimpleBlastTestCase):
             {
                 6: TabularBlastnSearch,
                 7: TabularBlastnSearch,
-                11: MultiformatBlastnSearch
+                11: MultiformatBlastnSearch,
+                17: SAMBlastnSearch,
             },
             BlastnSearchMetaclass.registry
         )

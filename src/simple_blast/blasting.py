@@ -58,10 +58,6 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
     Values passed to the constructor may be retrieved through the class's
     properties.
 
-    The class contains an attribute, column_dtypes, that optionally maps column
-    names to Pandas dtypes. Columns present in the column_dtypes dict will be
-    automatically converted to the specified dtype.
-
     Attributes:
         debug (bool): Whether to enable debug features for this instance.
     """
@@ -109,7 +105,7 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         self._seq2_path = query
         self._out_format = out_format
         self._evalue = evalue
-        self._hits = None
+        # self._hits = None
         self._db_cache = db_cache
         self._threads =  threads
         self._dust = dust
@@ -273,7 +269,52 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         # BlastnSearch does not store results, so there's nothing to load.
         return search
 
-class TabularBlastnSearch(BlastnSearch):
+class SpecializedBlastnSearch(BlastnSearch):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, out_format=type(self).out_formats[0], **kwargs)
+
+    @classmethod
+    def _load_results(cls, res, **kwargs):
+        try:
+            out_format = int(kwargs["out_format"])
+            assert out_format in cls.out_formats
+            del kwargs["out_format"]
+        except KeyError:
+            pass
+        return super()._load_results(res, **kwargs)
+
+class ParsedSearch:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hits = None
+
+    def _get_hits(self):
+        self._hits = self._parse_hits(io.BytesIO(self.get_output()))
+
+    @classmethod
+    def _load_results(cls, res, **kwargs):
+        search = super()._load_results(res, **kwargs)
+        search._hits = search._parse_hits(io.BytesIO(res))
+        return search
+        
+    @property
+    def hits(self):
+        """Return this search's parsed BLAST results."""
+        if self._hits is None:
+            self._get_hits()
+        return self._hits
+
+    def _parse_hits(self, hits):
+        return self.parse_hits(hits)
+
+    
+class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
+    """A BlastnSearch using tabular (outfmt 6) output.
+    
+    The class contains an attribute, column_dtypes, that optionally maps column
+    names to Pandas dtypes. Columns present in the column_dtypes dict will be
+    automatically converted to the specified dtype.
+    """
     column_dtypes = {"sstrand": "category"}
     out_formats = [6, 7]
     
@@ -312,6 +353,7 @@ class TabularBlastnSearch(BlastnSearch):
         Explanations of these columns may be found at
         https://www.metagenomics.wiki/tools/blast/blastn-output-format-6
 
+
         If the caller desires to include additional columns, it may provide
         them to the additional_columns parameter.
 
@@ -327,7 +369,6 @@ class TabularBlastnSearch(BlastnSearch):
         super().__init__(
             subject,
             query,
-            type(self).out_formats[0],
             *args,
             **kwargs
         )
@@ -338,12 +379,6 @@ class TabularBlastnSearch(BlastnSearch):
         """Return the list of columns to include in the output."""
         return self._out_columns
 
-    @property
-    def hits(self) -> pd.DataFrame:
-        """Return a dataframe containing this search's BLAST results."""
-        if self._hits is None:
-            self._get_hits()
-        return self._hits
 
     def _build_blast_command(self):
         command = super()._build_blast_command()
@@ -354,36 +389,36 @@ class TabularBlastnSearch(BlastnSearch):
         return command
 
     @classmethod
-    def parse_hits(cls, hits, columns):
-        return pd.read_csv(hits, names=columns, sep=r"\s+")
-
-    def _get_hits(self):
-        self._hits = type(self).parse_hits(
-            io.BytesIO(self.get_output()),
-            self._out_columns
-        )
-        for col in self._out_columns:
+    def parse_hits(cls, hits, columns, dtypes=None):
+        if dtypes is None:
+            dtypes = cls.column_dtypes
+        res = pd.read_csv(hits, names=columns, sep=r"\s+")
+        for col in columns:
             try:
-                self._hits[col] = self._hits[col].astype(
-                    self.column_dtypes[col]
+                res[col] = res[col].astype(
+                    dtypes[col]
                 )
             except KeyError:
                 pass
+        return res
+
+    def _parse_hits(self, hits):
+        return self.parse_hits(hits, self.out_columns, self.column_dtypes)
+
+    # def _parse_hits(self, res):
+    #     return type(self).parse_hits(
+    #         io.
 
     @classmethod
     def _load_results(cls, res, **kwargs):
         try:
             out_split = str(kwargs["out_format"]).split()
-            out_format = int(out_split[0])
-            assert out_format in cls.out_formats
-            del kwargs["out_format"]
+            kwargs["out_format"] = out_split[0]
             if out_split[1:]:
                 kwargs["out_columns"] = out_split[1:]
         except KeyError:
             pass
-        search = cls(**kwargs)
-        search._hits = cls.parse_hits(io.BytesIO(res), search.out_columns)
-        return search
+        return super()._load_results(res, **kwargs)
 
 def blastn_from_files(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequence files."""

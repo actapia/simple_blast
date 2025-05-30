@@ -5,9 +5,12 @@ from simple_blast.blasting import (
     default_out_columns
 )
 from simple_blast.multiformat import MultiformatBlastnSearch
+from simple_blast.sam import SAMBlastnSearch
 from .simple_blast_test import (
     SimpleBlastTestCase,
 )
+
+import Bio.Align
 
 class TestMultiformatBlastnSearch(SimpleBlastTestCase):
     def test_construction(self):
@@ -38,7 +41,9 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
         )
         res = search.to(6)
         TabularBlastnSearch.parse_hits(io.BytesIO(res), default_out_columns)
-
+        res = search.to(17)
+        Bio.Align.parse(io.TextIOWrapper(io.BytesIO(res)), "sam")
+        
     def test_to_search(self):
         subject = self.data_dir / "seqs_0.fasta",
         query = self.data_dir / "queries.fasta"
@@ -47,4 +52,25 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
         self.assertIsInstance(res, TabularBlastnSearch)
         search2 = TabularBlastnSearch(subject, query)
         self.assertDataFramesEqual(res.hits, search2.hits)
-    
+        res = search.to_search(17)
+        self.assertIsInstance(res, SAMBlastnSearch)
+        search2 = SAMBlastnSearch(subject, query)
+        self.assertSAMsEqual(res.hits, search2.hits)
+
+    def test_to_sam(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        subject = self.data_dir / "seqs_0.fasta",
+        query = self.data_dir / "queries.fasta"
+        search = MultiformatBlastnSearch(subject, query)
+        res = search.to_sam()
+        for al in res.hits:
+            self.assertTrue(al.query.id.startswith("seq"))
+            self.assertTrue(al.target.id.startswith("from_seq"))
+        res = search.to_sam(False)
+        for al in res.hits:
+            self.assertTrue(al.target.id.startswith("Query_"))
+            self.assertTrue(al.query.id.startswith("Subject_"))
+

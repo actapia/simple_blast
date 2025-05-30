@@ -2,6 +2,8 @@ import unittest
 import tempfile
 import os
 import shutil
+import io
+import operator
 import importlib.resources
 import pandas.testing
 
@@ -34,6 +36,26 @@ class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCas
 
     def assertDataFramesEqual(self, a, b):
         return pandas.testing.assert_frame_equal(a, b)
+
+    def assertSAMsEqual(self, a, b):
+        import Bio.Align
+        for i, als in enumerate(zip(iter(a), iter(b))):
+            strs = []
+            for al in als:
+                strio = io.StringIO()
+                Bio.Align.sam.AlignmentWriter(strio).write_alignments(
+                    strio,
+                    [al]
+                )
+                strs.append(strio.getvalue())
+            if not operator.eq(*strs):
+                raise AssertionError(
+                    "SAM Alignments at index {} not equal ({} != {})".format(
+                        i,
+                        *strs
+                    )
+                )
+                
 
     def assertDictIsSubset(self, a, b):
         for k, v in a.items():
