@@ -14,6 +14,12 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
             self.data_dir / "queries.fasta"
         )
         self.assertEqual(len(list(iter(search.hits))), 0)
+
+    def test_search_pyblast4(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
         for subject in self.data_dir.glob("seqs_*.fasta"):
             multi_search = MultiformatBlastnSearch(
                 subject,
