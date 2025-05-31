@@ -66,10 +66,14 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
             self,
             out_format: int | str,
             query: str | Path,
-            subject: str | Path | Iterable[str] | Iterable[Path],
+            subject: Optional[
+                str | Path | Iterable[str] | Iterable[Path]
+            ] = None,
+            db: Optional[str] = None,
+            remote: bool = False,
             evalue: float = 1e-20,
             db_cache: Optional[BlastDBCache] = None,
-            threads: int = 1,
+            threads: Optional[int] = None,
             dust: bool = True,
             task: Optional[str] = None,
             max_targets: int = 500,
@@ -89,6 +93,8 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
             out_format:         Output format to use.
             query:              Path to query sequence FASTA file.
             subject:            Path(s) to subject sequence FASTA file(s).
+            db:                 Name of BLAST database to query.
+            remote (bool):      Whether to execute a remote BLASTn search.
             evalue (float):     Expect value cutoff to use in BLAST search.
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
             threads (int):      Number of threads to use for BLAST search.
@@ -99,10 +105,22 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
             perc_ident (int):   Percent identity cutoff.
             debug (bool):       Whether to enable debug features.
     """
-        subject = to_path_iterable(subject, tuple)
+        if subject is not None:
+            subject = to_path_iterable(subject, tuple)
+        if subject and db and not db_cache:
+            raise ValueError("Cannot specify subject and explicit DB.")
+        if remote:
+            if threads:
+                raise ValueError("Cannot specify threads for remote search.")
+            if n_seqidlist:
+                raise ValueError(
+                    "Cannot specify n_seqidlist for remote search."
+                )
         query = Path(query)
         self._seq1_path = subject
         self._seq2_path = query
+        self._db = db
+        self._remote = remote
         self._out_format = out_format
         self._evalue = evalue
         # self._hits = None
@@ -130,7 +148,17 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         return self._seq1_path
 
     @property
-    def seq1_path(self) -> str:
+    def db(self) -> Optional[str]:
+        """Return the BLAST database to query."""
+        return self._db
+
+    @property
+    def remote(self) -> bool:
+        """Return whether to execute a remote search."""
+        return self._remote
+
+    @property
+    def seq1_path(self) -> Optional[str]:
         """Return the subject sequence paths."""
         return self._seq1_path
 
@@ -187,22 +215,32 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
     def _build_blast_command(self):
         command = Command()
         command += ["blastn"]
-        if self._db_cache and self.seq1_path in self._db_cache:
+        if self.db is not None:
+            command |= {"-db": self.db}
+        if self._db_cache and \
+           self.seq1_path and \
+           self.seq1_path in self._db_cache:
             command |= {"-db": str(self._db_cache[self.seq1_path])}
-        elif len(self.seq1_path) > 1:
-            raise NotInDatabaseError("Must use DB cache for multiple subjects.")
-        else:
-            command |= {"-subject": str(self.seq1_path[0])}
+        elif self.seq1_path is not None:
+            if len(self.seq1_path) > 1:
+                raise NotInDatabaseError(
+                    "Must use DB cache for multiple subjects."
+                )
+            else:
+                command |= {"-subject": str(self.seq1_path[0])}
+        if self.remote:
+            command |= ["-remote"]
         if self._task is not None:
             command |= {"-task": self._task}
         if self._negative_seqidlist is not None:
             command |= {"-negative_seqidlist": self._negative_seqidlist}
+        if self.threads is not None:
+            command |= {"-num_threads": str(self._threads)}
         command |= {
             "-query": str(self.seq2_path),
             "-evalue": str(self.evalue),
             "-outfmt": self._out_format,
             # " ".join([str(self._out_format)] + list(self._out_columns)),
-            "-num_threads": str(self._threads),
             "-dust": yes_no[self._dust],
             "-max_target_seqs": str(self._max_targets),
             "-perc_identity": str(self._perc_identity)

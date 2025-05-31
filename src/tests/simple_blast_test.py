@@ -1,4 +1,5 @@
 import unittest
+import functools
 import tempfile
 import os
 import shutil
@@ -16,7 +17,12 @@ def multi_glob(path, *patterns):
     for p in patterns:
         yield from path.glob(p)
 
-class SimpleBlastTestCase(unittest.TestCase):#(DictSubsetTestCase, PandasTestCase):
+remote_test = unittest.skipUnless(
+    int(os.environ.get("TEST_REMOTE", 0)),
+    "remote tests are slow, so off by default"
+)
+
+class SimpleBlastTestCase(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         os.chdir(self.temp_dir.name)

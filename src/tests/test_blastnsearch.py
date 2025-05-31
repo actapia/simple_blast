@@ -15,6 +15,7 @@ from simple_blast.blastdb_cache import BlastDBCache
 from .simple_blast_test import (
     SimpleBlastTestCase,
     parse_blast_command,
+    remote_test
 )
 
 @contextmanager
@@ -171,3 +172,25 @@ class TestBlastnSearch(SimpleBlastTestCase):
         )
         with self.assertRaises(NotInDatabaseError):
             search.get_output()
+
+    def test_db(self):
+        cache_dir = self.data_dir / "dbcache"
+        cache_dir.mkdir()
+        cache = BlastDBCache(cache_dir)
+        cache.makedb(list(self.data_dir.glob("seqs_*.fasta")))
+        db = next(iter(cache._cache.values()))
+        search = BlastnSearch(11, self.data_dir / "queries.fasta", db=db)
+        self.assertTrue(bool(search.get_output()))
+
+    @remote_test
+    def test_remote(self):
+        search = BlastnSearch(
+            11,
+            self.data_dir / "yeast.fasta",
+            db="nr",
+            remote=True,
+            #debug=True
+        )
+        self.assertTrue(bool(search.get_output()))
+        
+        

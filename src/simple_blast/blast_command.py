@@ -10,7 +10,7 @@ class Command:
         self._dict[self._cnt] = arg
         self._cnt += 1
 
-    def add_argument(self, name, value):
+    def add_argument(self, name, value=None):
         self._dict[(name, self._mult[name])] = value
         self._mult[name] += 1
 
@@ -56,8 +56,12 @@ class Command:
         return self
 
     def __ior__(self, values):
-        for k, v in values.items():
-            self.add_argument(k, v)
+        try:
+            for k, v in values.items():
+                self.add_argument(k, v)
+        except AttributeError:
+            for k in values:
+                self.add_argument(k)
         return self
 
     def argument_iter(self):
@@ -67,7 +71,8 @@ class Command:
                 yield str(k)
             except TypeError:
                 pass
-            yield str(v)
+            if v is not None:
+                yield str(v)
 
     def __str__(self):
         return " ".join(self.argument_iter())

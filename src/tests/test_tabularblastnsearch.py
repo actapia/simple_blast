@@ -10,6 +10,7 @@ from simple_blast.blasting import (
 from .simple_blast_test import (
     SimpleBlastTestCase,
     parse_blast_command,
+    remote_test,
 )
 
 class TestTabularBlastnSearch(SimpleBlastTestCase):
@@ -60,7 +61,7 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
             },
             kwargs
         )
-        for x in ["evalue", "num_threads", "dust", "max_target_seqs"]:
+        for x in ["evalue", "dust", "max_target_seqs"]:
             self.assertIn(x, kwargs)
         for x in ["task", "negative_seqidlist"]:
             self.assertNotIn(x, kwargs)
@@ -184,7 +185,7 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
             self.data_dir / "seqs_0.fasta",
         )
         self.assertNotEqual(search.hits["bitscore"].dtype, np.float64)
-
+        
     def test_sstrand_categorical(self):
         self.assertHasAttr(
             TabularBlastnSearch(
@@ -194,3 +195,12 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
             ).hits["sstrand"],
             "cat"
         )
+
+    @remote_test
+    def test_remote(self):
+        search = TabularBlastnSearch(
+            self.data_dir / "yeast.fasta",
+            db="nr",
+            remote=True,
+        )
+        self.assertGreater(search.hits.shape[0], 0)
