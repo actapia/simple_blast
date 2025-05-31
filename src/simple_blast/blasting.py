@@ -64,9 +64,9 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
 
     def __init__(
             self,
+            out_format: int | str,
             query: str | Path,
             subject: str | Path | Iterable[str] | Iterable[Path],
-            out_format: int | str,
             evalue: float = 1e-20,
             db_cache: Optional[BlastDBCache] = None,
             threads: int = 1,
@@ -86,9 +86,9 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         search. If no value is provided, a default evalue of 1e-20 will be used.
 
         Parameters:
+            out_format:         Output format to use.
             query:              Path to query sequence FASTA file.
             subject:            Path(s) to subject sequence FASTA file(s).
-            out_format:         Output format to use.
             evalue (float):     Expect value cutoff to use in BLAST search.
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
             threads (int):      Number of threads to use for BLAST search.
@@ -271,7 +271,7 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
 
 class SpecializedBlastnSearch(BlastnSearch):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, out_format=type(self).out_formats[0], **kwargs)
+        super().__init__(type(self).out_formats[0], *args, **kwargs)
 
     @classmethod
     def _load_results(cls, res, **kwargs):
