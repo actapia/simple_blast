@@ -115,15 +115,15 @@ class TestSeqs(SimpleBlastTestCase):
         # Test with query and subject from seqs.
         for subject in seqio_subjects:
             with TabularBlastnSearch.from_sequences(
+                    seqio_query,
                     subject,
-                    seqio_query
             ) as search:
                 self.assertGreater(search.hits.shape[0], 0)
                 self.assertColumnsEqual(
                     search.hits.qseqid.str.removeprefix("from_"),
                     search.hits.sseqid
                 )
-            hits = blastn_from_sequences(subject, seqio_query)
+            hits = blastn_from_sequences(seqio_query, subject)
             self.assertGreater(hits.shape[0], 0)
             self.assertColumnsEqual(
                 hits.qseqid.str.removeprefix("from_"),
@@ -162,8 +162,8 @@ class TestSeqs(SimpleBlastTestCase):
         # Test with subject from seqs.
         for subject in seqio_subjects:
             with TabularBlastnSearch.from_sequences(
-                    subject,
-                    query=self.data_dir / "queries.fasta"
+                    subject_seqs=subject,
+                    query=self.data_dir / "queries.fasta",
             ) as search:
                 self.assertGreater(search.hits.shape[0], 0)
                 self.assertColumnsEqual(
@@ -171,7 +171,7 @@ class TestSeqs(SimpleBlastTestCase):
                     search.hits.sseqid
                 )
             hits = blastn_from_sequences(
-                subject,
+                subject_seqs=subject,
                 query=self.data_dir / "queries.fasta"
             )
             self.assertGreater(hits.shape[0], 0)
@@ -180,7 +180,7 @@ class TestSeqs(SimpleBlastTestCase):
                 hits.sseqid
             )
         with TabularBlastnSearch.from_sequences(
-                seqio_no_matches,
+                subject_seqs=seqio_no_matches,
                 query=self.data_dir / "queries.fasta"
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
@@ -190,8 +190,8 @@ class TestSeqs(SimpleBlastTestCase):
         no_matches = [str(s.seq) for s in seqio_no_matches]
         for i, subject in enumerate(subjects):
             with TabularBlastnSearch.from_sequences(
-                    subject,
-                    query
+                    subject_seqs=subject,
+                    query_seqs=query
             ) as search:
                 self.assertGreater(search.hits.shape[0], 0)
                 self.assertColumnsEqual(
@@ -202,7 +202,7 @@ class TestSeqs(SimpleBlastTestCase):
                         search.hits.sseqid.str.removeprefix("seq_")
                     ) + 3*i
                 )
-            hits = blastn_from_sequences(subject, query)
+            hits = blastn_from_sequences(query, subject)
             self.assertGreater(hits.shape[0], 0)
             self.assertColumnsEqual(
                 pd.to_numeric(
@@ -213,15 +213,15 @@ class TestSeqs(SimpleBlastTestCase):
                 ) + 3*i                
             )
         with TabularBlastnSearch.from_sequences(
-                no_matches,
-                query
+                subject_seqs=no_matches,
+                query_seqs=query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         # Hybrid.
         for i, subject in enumerate(subjects):
             with TabularBlastnSearch.from_sequences(
-                    subject,
-                    seqio_query
+                    subject_seqs=subject,
+                    query_seqs=seqio_query
             ) as search:
                 self.assertGreater(search.hits.shape[0], 0)
                 self.assertColumnsEqual(
@@ -232,7 +232,7 @@ class TestSeqs(SimpleBlastTestCase):
                         search.hits.sseqid.str.removeprefix("seq_")
                     ) + 3*i
                 )
-            hits = blastn_from_sequences(subject, seqio_query)
+            hits = blastn_from_sequences(seqio_query, subject)
             self.assertGreater(hits.shape[0], 0)
             self.assertColumnsEqual(
                 pd.to_numeric(
@@ -243,14 +243,14 @@ class TestSeqs(SimpleBlastTestCase):
                 ) + 3*i                
             )
         with TabularBlastnSearch.from_sequences(
+                seqio_query,
                 no_matches,
-                seqio_query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
         for i, subject in enumerate(seqio_subjects):
             with TabularBlastnSearch.from_sequences(
+                    query,
                     subject,
-                    query
             ) as search:
                 self.assertGreater(search.hits.shape[0], 0)
                 self.assertColumnsEqual(
@@ -261,7 +261,7 @@ class TestSeqs(SimpleBlastTestCase):
                         search.hits.sseqid.str.removeprefix("seq")
                     )
                 )
-            hits = blastn_from_sequences(subject, query)
+            hits = blastn_from_sequences(query, subject)
             self.assertGreater(hits.shape[0], 0)
             self.assertColumnsEqual(
                 pd.to_numeric(
@@ -272,8 +272,8 @@ class TestSeqs(SimpleBlastTestCase):
                 )
             )
         with TabularBlastnSearch.from_sequences(
+                query,
                 seqio_no_matches,
-                query
         ) as search:
             self.assertEqual(search.hits.shape[0], 0)
 

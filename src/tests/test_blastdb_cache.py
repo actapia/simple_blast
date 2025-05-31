@@ -129,8 +129,8 @@ class TestBlastDBCache(SimpleBlastTestCase):
             for f in temp_files.values():
                 os.remove(f.name)
             search = TabularBlastnSearch(
-                temp_files[self.data_dir / "seqs_0.fasta"].name,
-                self.data_dir / "queries.fasta",
+                subject=temp_files[self.data_dir / "seqs_0.fasta"].name,
+                query=self.data_dir / "queries.fasta",
                 db_cache=cache
             )
             self.assertEqual(
@@ -138,8 +138,8 @@ class TestBlastDBCache(SimpleBlastTestCase):
                 ["seq0"]
             )
             search = TabularBlastnSearch(
-                files,
-                self.data_dir / "queries.fasta",
+                subject=files,
+                query=self.data_dir / "queries.fasta",
                 db_cache=cache
             )
             self.assertCountEqual(

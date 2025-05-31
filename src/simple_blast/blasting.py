@@ -64,8 +64,8 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
 
     def __init__(
             self,
-            subject: str | Path | Iterable[str] | Iterable[Path],
             query: str | Path,
+            subject: str | Path | Iterable[str] | Iterable[Path],
             out_format: int | str,
             evalue: float = 1e-20,
             db_cache: Optional[BlastDBCache] = None,
@@ -86,8 +86,8 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         search. If no value is provided, a default evalue of 1e-20 will be used.
 
         Parameters:
-            subject:            Path(s) to subject sequence FASTA file(s).
             query:              Path to query sequence FASTA file.
+            subject:            Path(s) to subject sequence FASTA file(s).
             out_format:         Output format to use.
             evalue (float):     Expect value cutoff to use in BLAST search.
             db_cache:           BlastDBCache that tells where to find BLAST DBs.
@@ -214,8 +214,8 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
     @contextmanager
     def from_sequences(
             cls,
-            subject_seqs: Optional[Iterable[SeqType] | SeqType] = None,
             query_seqs: Optional[Iterable[SeqType] | SeqType] = None,
+            subject_seqs: Optional[Iterable[SeqType] | SeqType] = None,
             **kwargs
     ):
         """Return a context for a BlastnSearch for the given sequences.
@@ -225,8 +225,8 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         deletes the temporary files.
 
         Parameters:
-            subject_seqs: Sequences to use as subjects in the search.
             query_seqs:   Sequences to use as queries in the search.
+            subject_seqs: Sequences to use as subjects in the search.
 
         Returns:
             A context manager that gives a BlastnSearch for the sequences.
@@ -320,11 +320,9 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
     
     def __init__(
             self,
-            subject: str | Path | Iterable[str] | Iterable[Path],
-            query: str | Path,
+            *args,
             out_columns: List[str] = default_out_columns,
             additional_columns: List[str] = [],
-            *args,
             **kwargs
     ):
         """Construct a BlastnSearch with tabular output parsed by Pandas.
@@ -361,14 +359,10 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
         object, see the documentation for BlastnSearch.
 
         Parameters:
-            subject:            Path(s) to subject sequence FASTA file(s).
-            query:              Path to query sequence FASTA file.
             out_columns:        Output columns to include in results.
-            additional_columns: Additional output columns to include in results.            
+            additional_columns: Additional output columns to include in results.
         """
         super().__init__(
-            subject,
-            query,
             *args,
             **kwargs
         )

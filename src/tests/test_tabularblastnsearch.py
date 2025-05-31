@@ -19,18 +19,18 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
         subject_path = Path(subject_str)
         query_path = Path(query_str)
         subject_set = {subject_path, query_path}
-        res = TabularBlastnSearch(subject_set, query_path)
+        res = TabularBlastnSearch(query_path, subject_set)
         self.assertEqual(list(res.out_columns), default_out_columns)
         new_out_columns = ["foo", "bar"]
         res = TabularBlastnSearch(
-            subject_path,
             query_path,
+            subject_path,
             out_columns=new_out_columns
         )
         self.assertEqual(list(res.out_columns), new_out_columns)
         res = TabularBlastnSearch(
-            subject_path,
             query_path,
+            subject_path,
             additional_columns=new_out_columns
         )
         self.assertEqual(
@@ -47,8 +47,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
         args, kwargs = parse_blast_command(
             list(
                 TabularBlastnSearch(
-                    subject_path,
                     query_path,
+                    subject_path,
                 )._build_blast_command().argument_iter()
             )[1:]
         )
@@ -69,8 +69,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
         args, kwargs = parse_blast_command(
             list(
                 TabularBlastnSearch(
-                    subject_path,
                     query_path,
+                    subject_path,
                     out_columns=new_out_columns
                 )._build_blast_command().argument_iter()
             )[1:]
@@ -84,8 +84,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
         args, kwargs = parse_blast_command(
             list(
                 TabularBlastnSearch(
-                    subject_path,
                     query_path,
+                    subject_path,
                     additional_columns=new_out_columns
                 )._build_blast_command().argument_iter()
             )[1:]
@@ -102,8 +102,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
     def test_basic_search(self):
         for subject in self.data_dir.glob("seqs_*.fasta"):
             search = TabularBlastnSearch(
+                self.data_dir / "queries.fasta",
                 subject,
-                self.data_dir / "queries.fasta"
             )
             self.assertGreater(search.hits.shape[0], 0)
             #self.assertEqual(5,4)
@@ -116,15 +116,15 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
                 default_out_columns
             )
         search = TabularBlastnSearch(
+            self.data_dir / "queries.fasta",
             self.data_dir / "no_matches.fasta",
-            self.data_dir / "queries.fasta"
         )
         self.assertEqual(search.hits.shape[0], 0)
         
     def test_out_columns(self):
         search = TabularBlastnSearch(
+            self.data_dir / "queries.fasta",
             self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta"
         )
         self.assertEqual(
             list(search.hits.columns),
@@ -132,8 +132,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
         )
         new_out_columns = ["slen", "nident"]
         search = TabularBlastnSearch(
-            self.data_dir / "seqs_0.fasta",
             self.data_dir / "queries.fasta",
+            self.data_dir / "seqs_0.fasta",
             out_columns=new_out_columns
         )
         self.assertEqual(
@@ -141,8 +141,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
             new_out_columns
         )
         search = TabularBlastnSearch(
-            self.data_dir / "seqs_0.fasta",
             self.data_dir / "queries.fasta",
+            self.data_dir / "seqs_0.fasta",
             additional_columns=new_out_columns
         )
         self.assertEqual(
@@ -153,8 +153,8 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
     def test_blastn_from_files(self):
         for subject in self.data_dir.glob("seqs_*.fasta"):
             hits = blastn_from_files(
+                self.data_dir / "queries.fasta",
                 subject,
-                self.data_dir / "queries.fasta"
             )
             self.assertGreater(hits.shape[0], 0)
             #self.assertEqual(5,4)
@@ -167,29 +167,29 @@ class TestTabularBlastnSearch(SimpleBlastTestCase):
                 default_out_columns
             )
         hits = blastn_from_files(
+            self.data_dir / "queries.fasta",
             self.data_dir / "no_matches.fasta",
-            self.data_dir / "queries.fasta"
         )
         self.assertEqual(hits.shape[0], 0)
 
     def test_column_dtypes(self):
         search = TabularBlastnSearch(
-            self.data_dir / "seqs_0.fasta",
             self.data_dir / "queries.fasta",
+            self.data_dir / "seqs_0.fasta",
         )
         search.column_dtypes = search.column_dtypes | {"bitscore": np.float64}
         self.assertEqual(search.hits["bitscore"].dtype, np.float64)
         search = TabularBlastnSearch(
-            self.data_dir / "seqs_0.fasta",
             self.data_dir / "queries.fasta",
+            self.data_dir / "seqs_0.fasta",
         )
         self.assertNotEqual(search.hits["bitscore"].dtype, np.float64)
 
     def test_sstrand_categorical(self):
         self.assertHasAttr(
             TabularBlastnSearch(
-                self.data_dir / "seqs_0.fasta",
                 self.data_dir / "queries.fasta",
+                self.data_dir / "seqs_0.fasta",
                 additional_columns=["sstrand"]
             ).hits["sstrand"],
             "cat"

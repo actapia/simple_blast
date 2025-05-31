@@ -16,7 +16,7 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
     def test_construction(self):
         subject_str = "subject.fasta"
         query_str = "query.fasta"
-        res = MultiformatBlastnSearch(subject_str, query_str)
+        res = MultiformatBlastnSearch(query_str, subject_str)
         self.assertEqual(res.out_format, 11)
 
     def test_basic_search(self):
@@ -25,8 +25,8 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
         except ImportError:
             self.skipTest("pyblast4_archive not installed.")
         search = MultiformatBlastnSearch(
+            self.data_dir / "queries.fasta",
             self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta"
         )
         # This just tests that we get a valid Blast4-Archive as output for now.
         pyblast4_archive.Blast4Archive.from_file(
@@ -36,8 +36,8 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
 
     def test_to(self):
         search = MultiformatBlastnSearch(
+            self.data_dir / "queries.fasta",
             self.data_dir / "seqs_0.fasta",
-            self.data_dir / "queries.fasta"
         )
         res = search.to(6)
         TabularBlastnSearch.parse_hits(io.BytesIO(res), default_out_columns)
@@ -47,14 +47,14 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
     def test_to_search(self):
         subject = self.data_dir / "seqs_0.fasta",
         query = self.data_dir / "queries.fasta"
-        search = MultiformatBlastnSearch(subject, query)
+        search = MultiformatBlastnSearch(query, subject)
         res = search.to_search(6)
         self.assertIsInstance(res, TabularBlastnSearch)
-        search2 = TabularBlastnSearch(subject, query)
+        search2 = TabularBlastnSearch(query, subject)
         self.assertDataFramesEqual(res.hits, search2.hits)
         res = search.to_search(17)
         self.assertIsInstance(res, SAMBlastnSearch)
-        search2 = SAMBlastnSearch(subject, query)
+        search2 = SAMBlastnSearch(query, subject)
         self.assertSAMsEqual(res.hits, search2.hits)
 
     def test_to_sam(self):
@@ -64,7 +64,7 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
             self.skipTest("pyblast4_archive not installed.")
         subject = self.data_dir / "seqs_0.fasta",
         query = self.data_dir / "queries.fasta"
-        search = MultiformatBlastnSearch(subject, query)
+        search = MultiformatBlastnSearch(query, subject)
         res = search.to_sam()
         for al in res.hits:
             self.assertTrue(al.query.id.startswith("seq"))

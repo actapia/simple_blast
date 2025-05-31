@@ -34,20 +34,20 @@ class TestBlastnSearch(SimpleBlastTestCase):
         query_path = Path(query_str)
         subject_list = [subject_path]
         # Basic subject and query strings.
-        res = BlastnSearch(subject_str, query_str, 11)
+        res = BlastnSearch(query_str, subject_str, 11)
         self.assertEqual(list(res.seq1_path), subject_list)
         self.assertEqual(res.seq2_path, query_path)
         self.assertEqual(list(res.subject), subject_list)
         self.assertEqual(res.query, query_path)
         # From paths.
-        res = BlastnSearch(subject_path, query_path,  11)
+        res = BlastnSearch(query_path, subject_path,  11)
         self.assertEqual(list(res.seq1_path), subject_list)
         self.assertEqual(res.seq2_path, query_path)
         self.assertEqual(list(res.subject), subject_list)
         self.assertEqual(res.query, query_path)
         # From collection of paths.
         subject_set = {subject_path, query_path}
-        res = BlastnSearch(subject_set, query_path, 11)
+        res = BlastnSearch(query_path, subject_set, 11)
         self.assertEqual(set(res.seq1_path), subject_set)
         self.assertEqual(set(res.subject), subject_set)
         # # Check setting output columns.
@@ -77,8 +77,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
         negative_seqidlist = "apples"
         perc_ident = 90
         res = BlastnSearch(
-            subject_path,
             query_path,
+            subject_path,
             11,
             evalue=evalue,
             db_cache=cache,
@@ -125,8 +125,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
         args, kwargs = parse_blast_command(
             list(
                 BlastnSearch(
-                    subject_path,
                     query_path,
+                    subject_path,
                     11,
                     evalue=evalue,
                     threads=threads,
@@ -156,8 +156,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
     def test_missing_executable(self):
         with temporary_os_environ(PATH="."):
             search = BlastnSearch(
-                self.data_dir / "seqs_0.fasta",
                 self.data_dir / "queries.fasta",
+                self.data_dir / "seqs_0.fasta",
                 11
             )
             with self.assertRaises(FileNotFoundError):
@@ -165,8 +165,8 @@ class TestBlastnSearch(SimpleBlastTestCase):
 
     def test_multiple_subjects(self):
         search = BlastnSearch(
-            [self.data_dir / x for x in ["seqs_0.fasta", "seqs_1.fasta"]],
             self.data_dir / "queries.fasta",
+            [self.data_dir / x for x in ["seqs_0.fasta", "seqs_1.fasta"]],
             11
         )
         with self.assertRaises(NotInDatabaseError):

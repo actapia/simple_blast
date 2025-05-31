@@ -7,7 +7,7 @@ from .simple_blast_test import (
 class TestSAMBlastnSearch(SimpleBlastTestCase):
     def test_basic_search(self):
         for subject in self.data_dir.glob("seqs_*.fasta"):
-            search = SAMBlastnSearch(subject, self.data_dir / "queries.fasta")
+            search = SAMBlastnSearch(self.data_dir / "queries.fasta", subject)
             self.assertGreater(len(list(iter(search.hits))), 0)
         search = SAMBlastnSearch(
             self.data_dir / "no_matches.fasta",
@@ -22,8 +22,8 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
             self.skipTest("pyblast4_archive not installed.")
         for subject in self.data_dir.glob("seqs_*.fasta"):
             multi_search = MultiformatBlastnSearch(
+                self.data_dir / "queries.fasta",
                 subject,
-                self.data_dir / "queries.fasta"
             )
             for al in multi_search.to_sam().hits:
                 self.assertEqual(
