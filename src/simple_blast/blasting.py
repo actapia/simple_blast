@@ -1,5 +1,6 @@
 import subprocess
 import pandas as pd
+import numpy as np
 import io
 from collections.abc import Iterable
 from typing import List, Optional
@@ -28,13 +29,23 @@ yes_no = ["no", "yes"]
 class NotInDatabaseError(Exception):
     pass
 
-def try_element_to_SeqType_list(x):
+def try_element_to_SeqType_list(x: SeqType | list[SeqType]) -> list[SeqType]:
+    """Converts single SeqType objects to lists.
+
+    If x is a SeqType object, then it is put in a list where it is the only
+    element, and this list is returned. Otherwise, x is returned as is.
+    """
     if isinstance(x, SeqType):
         return [x]
     else:
         return x
 
 class BlastnSearchMetaclass(type):
+    """Metaclass for BlastnSearch classes that maintains a registry of classes.
+
+    Classes are organized in the registry according to the output formats that
+    they handle.
+    """    
     registry = {}
     
     def __init__(self, *args, **kwargs):
@@ -49,11 +60,7 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
     """A search (alignment) to be made with blastn.
 
     This class provides a programmer-friendly way to define the parameters of a
-    simple blastn search, carry out the search, and parse the results.
-
-    The most useful property of a BlastnSearch instance is hits. hits runs the
-    defined blastn search (if it hasn't been run already), parses the results,
-    stores them in a pandas dataframe, and returns the result.
+    simple blastn search and carry out the search.
 
     Values passed to the constructor may be retrieved through the class's
     properties.
@@ -212,7 +219,7 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         """Return the output format to use for the search output."""
         return self._out_format
 
-    def _build_blast_command(self):
+    def _build_blast_command(self) -> Command:
         command = Command()
         command += ["blastn"]
         if self.db is not None:
@@ -284,14 +291,15 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         finally:
             pass
 
-    def _run(self):
+    def _run(self) -> subprocess.Popen:
         return subprocess.Popen(
             list(self._build_blast_command().argument_iter()),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
 
-    def get_output(self):
+    def get_output(self) -> bytes:
+        """Get the output of the BLASTn search as bytes."""
         proc = self._run()
         res, _ = proc.communicate()
         if proc.returncode:
@@ -308,6 +316,7 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         return search
 
 class SpecializedBlastnSearch(BlastnSearch):
+    """Base class for BlastnSearches that handle specific output formats."""
     def __init__(self, *args, **kwargs):
         super().__init__(type(self).out_formats[0], *args, **kwargs)
 
@@ -322,6 +331,7 @@ class SpecializedBlastnSearch(BlastnSearch):
         return super()._load_results(res, **kwargs)
 
 class ParsedSearch:
+    """Mixin for BlastnSearhces that parse the obtained results."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._hits = None
@@ -342,12 +352,16 @@ class ParsedSearch:
             self._get_hits()
         return self._hits
 
-    def _parse_hits(self, hits):
+    def _parse_hits(self, hits: io.BufferedIOBase):
         return self.parse_hits(hits)
 
     
 class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
-    """A BlastnSearch using tabular (outfmt 6) output.
+    """A BlastnSearch using tabular (outfmt 6) output, parsed with Pandas.
+
+    The most useful property of a TabularBlastnSearch instance is hits. hits
+    runs the defined blastn search (if it hasn't been run already), parses the
+    results, stores them in a pandas dataframe, and returns the result.
     
     The class contains an attribute, column_dtypes, that optionally maps column
     names to Pandas dtypes. Columns present in the column_dtypes dict will be
@@ -366,10 +380,7 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
         """Construct a BlastnSearch with tabular output parsed by Pandas.
 
         This constructor requires paths to FASTA files containing the query and
-        subject sequences to use in the search.
-
-        Optionally, the caller may provide an expect value cutoff to use for the
-        search. If no value is provided, a default evalue of 1e-20 will be used.
+        either a list of subject sequences or a database to use in the search.
 
         The caller may specify what columns should be included in the output.
         By default, the included columns are
@@ -412,16 +423,35 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
         return self._out_columns
 
 
-    def _build_blast_command(self):
+    def _build_blast_command(self) -> Command:
         command = super()._build_blast_command()
         command.set(
             "-outfmt",
-            " ".join([str(command.get("-outfmt"))] + list(self._out_columns))
+            " ".join([str(command.get("-outfmt")[0])] + list(self._out_columns))
         )
         return command
 
     @classmethod
-    def parse_hits(cls, hits, columns, dtypes=None):
+    def parse_hits(
+            cls,
+            hits: io.BufferedIOBase,
+            columns: list[str],
+            dtypes: Optional[dict[str, str | np.dtype]] = None,
+    ) -> pd.DataFrame:
+        """Parse a table from the given file-like object with Pandas.
+
+        The names of all columns must be specified. Optionally, the datatypes of
+        columns can be specified. If no datatype is specified for a given
+        column, then Pandas selects the datatype automatically.
+
+        Attributes:
+            hits:    The binary file-like object from which to read.
+            columns: The names of the columns in the parsed table.
+            dtypes:  Non-default datatypes to use for specified columns.
+
+        Returns:
+            A Pandas dataframe parsed from the hits object.
+        """
         if dtypes is None:
             dtypes = cls.column_dtypes
         res = pd.read_csv(hits, names=columns, sep=r"\s+")
@@ -434,7 +464,7 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
                 pass
         return res
 
-    def _parse_hits(self, hits):
+    def _parse_hits(self, hits: io.BufferedIOBase) -> pd.DataFrame:
         return self.parse_hits(hits, self.out_columns, self.column_dtypes)
 
     # def _parse_hits(self, res):
@@ -461,7 +491,7 @@ def blastn_from_sequences(*args, **kwargs) -> pd.DataFrame:
     with TabularBlastnSearch.from_sequences(*args, **kwargs) as search:
         return search.hits
 
-def formatted_blastn_search(out_format):
+def formatted_blastn_search(out_format: int | str) -> type:
     """Return an appropriate constructor for the given output format."""
     try:
         split = out_format.split()

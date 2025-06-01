@@ -1,10 +1,18 @@
+import os
 from dataclasses import dataclass
 import dateparser
 import datetime
 from typing import Optional
 
+# This code is based on the CSeqDBIdxFile::CSeqDBIdxFile constructor from the
+# NCBI C++ Toolkit; the original code is credited to Kevin Bealer. In the source
+# distribution of NCBI BLAST+, the code can be found at
+# c++/src/objtools/blast/seqdb_reader/seqdbfile.cpp.
+
+
 @dataclass(frozen=True)
 class BlastDBMetadata:
+    """Metadata about a BLAST database."""
     format_version: int
     db_seqtype: str # protein ("p") or nucleic acid ("n")
     title: str
@@ -18,11 +26,8 @@ class BlastDBMetadata:
 class UnsupportedDatabaseFormatException(Exception):
     pass
 
-def read_nin_metadata(nin):
-    # This code is based on the CSeqDBIdxFile::CSeqDBIdxFile constructor from
-    # the NCBI C++ Toolkit; the original code is credited to Kevin Bealer. In
-    # the source distribution of NCBI BLAST+, the code can be found at
-    # c++/src/objtools/blast/seqdb_reader/seqdbfile.cpp.
+def read_nin_metadata(nin: str | os.PathLike) -> BlastDBMetadata:
+    """Read the metadata from a BLAST database .nin file."""
     metadata = {}
     with open(nin, "rb") as nin_file:
         metadata["format_version"] = int.from_bytes(nin_file.read(4))
@@ -50,5 +55,3 @@ def read_nin_metadata(nin):
         metadata["vol_len"] = int.from_bytes(nin_file.read(8), "little")
         metadata["max_len"] = int.from_bytes(nin_file.read(4))
     return BlastDBMetadata(**metadata)
-        
-        

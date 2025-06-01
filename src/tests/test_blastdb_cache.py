@@ -131,7 +131,8 @@ class TestBlastDBCache(SimpleBlastTestCase):
             search = TabularBlastnSearch(
                 subject=temp_files[self.data_dir / "seqs_0.fasta"].name,
                 query=self.data_dir / "queries.fasta",
-                db_cache=cache
+                db_cache=cache,
+                #debug=True
             )
             self.assertEqual(
                 list(search.hits.sseqid),

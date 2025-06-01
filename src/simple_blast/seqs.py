@@ -1,7 +1,7 @@
+import io
 import os
 import tempfile
 import textwrap
-import time
 from pathlib import Path
 from contextlib import AbstractContextManager
 from collections.abc import Iterable
@@ -17,15 +17,14 @@ try:
 except ImportError:
     Bio = None
 
-def _write_fasta_fallback(seqs: Iterable[str], f):
-    #print("CALLED")
+def _write_fasta_fallback(seqs: Iterable[str], f: io.TextIOBase):
     for i, s in enumerate(seqs):
         f.write(
             ">seq_{}\n{}\n".format(i, textwrap.fill(s, width=80))
         )
     f.flush()
 
-def _write_fasta(seqs, path: Path):
+def _write_fasta(seqs: Iterable[SeqType], path: Path):
     with open(path, "w") as f:
         if Bio is not None:
             try:
@@ -35,10 +34,8 @@ def _write_fasta(seqs, path: Path):
                 pass
         _write_fasta_fallback(seqs, f)
 
-def write_thread(*args, **kwargs):
-    #print("About to write.")
+def _write_thread(*args, **kwargs):
     _write_fasta(*args, **kwargs)
-    #print("Done writing!")
 
 class SeqsAsFile(AbstractContextManager):
     """Used for creating temporary FIFOs for sequences."""
@@ -52,7 +49,7 @@ class SeqsAsFile(AbstractContextManager):
         self._name = tempfile.mktemp()
         os.mkfifo(self.name)
         self._write_thread = Thread(
-            target=write_thread,
+            target=_write_thread,
             args=(self._seqs, self.name)
         )
         self._write_thread.start()
