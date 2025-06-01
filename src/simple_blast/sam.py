@@ -107,6 +107,7 @@ class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
             decode_query = {}
         if decode_target is None:
             decode_target = {}
+        # noinspection PyTypeChecker
         return RenamedSamAlignmentIterator(
             io.TextIOWrapper(hits),
             decode_query,

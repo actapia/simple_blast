@@ -104,7 +104,8 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
                 "asn_text"
             )
             decode_query = pyblast4_archive.decode_query_ids(b4)
-            decode_subject = pyblast4_archive.decode_subject_ids(b4)            
+            decode_subject = pyblast4_archive.decode_subject_ids(b4)
+        # noinspection PyProtectedMember
         return SAMBlastnSearch._load_results(
             self.to(17),
             subject = self.subject,

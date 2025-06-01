@@ -38,7 +38,7 @@ def read_nin_metadata(nin: str | os.PathLike) -> BlastDBMetadata:
                 )
             )
         metadata["db_seqtype"] = "np"[int.from_bytes(nin_file.read(4))]
-        if (metadata["format_version"] >= 5):
+        if metadata["format_version"] >= 5:
             metadata["volume"] = int.from_bytes(nin_file.read(4))
         title_length = int.from_bytes(nin_file.read(4))
         metadata["title"] = nin_file.read(title_length).decode("ascii")

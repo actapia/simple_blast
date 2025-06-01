@@ -99,6 +99,7 @@ class Command:
         elements of values are treated as names with no associated values.
         """
         try:
+            # noinspection PyUnresolvedReferences
             for k, v in values.items():
                 self.add_argument(k, v)
         except AttributeError:

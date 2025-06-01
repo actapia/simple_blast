@@ -69,10 +69,7 @@ def to_path_iterable(
     """Convert a string or an iterable of values to an iterable of Paths."""
     if isinstance(ix, str):
         ix = [Path(ix)]
-    try:
-        return cls(map(Path, ix))
-    except TypeError:
-        return cls({ix})
+    return cls(map(Path, ix))
 
 def convert_index(
         self_i: int = 0, paths_i: int = 1
@@ -171,6 +168,7 @@ class BlastDBCache:
         """Create a DB from the given FASTA files and store it in the cache."""
         if seq_file_paths in self._cache:
             return
+        # noinspection PyUnresolvedReferences
         prefix = next(iter(seq_file_paths)).stem
         if len(seq_file_paths) > 1:
             prefix = prefix + "+"
@@ -189,16 +187,19 @@ class BlastDBCache:
         proc.communicate()
         if proc.returncode:
             raise subprocess.CalledProcessError(proc.returncode, proc.args)
+        # noinspection PyTypeChecker
         self._cache[seq_file_paths] = db_name
 
     @convert_index()
     def get(self, k: CacheIndex) -> str:
         """Get the BLAST database that indexes the given FASTA file(s)."""
+        # noinspection PyTypeChecker
         return self._cache[k]
 
     @convert_index()
     def delete(self, k: CacheIndex):
         """Remove the database indexing the given file(s) from the cache."""
+        # noinspection PyTypeChecker
         del self._cache[k]
 
     @convert_index()

@@ -2,7 +2,7 @@ import subprocess
 import pandas as pd
 import numpy as np
 import io
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import List, Optional
 from pathlib import Path
 from contextlib import contextmanager, ExitStack
@@ -48,11 +48,12 @@ class BlastnSearchMetaclass(type):
     """    
     registry = {}
     
-    def __init__(self, *args, **kwargs):
+    def __init__(cls, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            for fmt in self.out_formats:
-                type(self).registry[fmt] = self
+            # noinspection PyUnresolvedReferences
+            for fmt in cls.out_formats:
+                type(cls).registry[fmt] = cls
         except AttributeError:
             pass
 
@@ -165,12 +166,12 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         return self._remote
 
     @property
-    def seq1_path(self) -> Optional[str]:
+    def seq1_path(self) -> Optional[tuple[Path]]:
         """Return the subject sequence paths."""
         return self._seq1_path
 
     @property
-    def seq2_path(self) -> str:
+    def seq2_path(self) -> Path:
         """Return the query sequence path."""
         return self._seq2_path
 
@@ -318,12 +319,14 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
 class SpecializedBlastnSearch(BlastnSearch):
     """Base class for BlastnSearches that handle specific output formats."""
     def __init__(self, *args, **kwargs):
+        # noinspection PyUnresolvedReferences
         super().__init__(type(self).out_formats[0], *args, **kwargs)
 
     @classmethod
     def _load_results(cls, res, **kwargs):
         try:
             out_format = int(kwargs["out_format"])
+            # noinspection PyUnresolvedReferences
             assert out_format in cls.out_formats
             del kwargs["out_format"]
         except KeyError:
@@ -337,11 +340,14 @@ class ParsedSearch:
         self._hits = None
 
     def _get_hits(self):
+        # noinspection PyUnresolvedReferences
         self._hits = self._parse_hits(io.BytesIO(self.get_output()))
 
     @classmethod
     def _load_results(cls, res, **kwargs):
+        # noinspection PyUnresolvedReferences,PyProtectedMember
         search = super()._load_results(res, **kwargs)
+        # noinspection PyProtectedMember
         search._hits = search._parse_hits(io.BytesIO(res))
         return search
         
@@ -353,6 +359,7 @@ class ParsedSearch:
         return self._hits
 
     def _parse_hits(self, hits: io.BufferedIOBase):
+        # noinspection PyUnresolvedReferences
         return self.parse_hits(hits)
 
     
@@ -369,7 +376,8 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
     """
     column_dtypes = {"sstrand": "category"}
     out_formats = [6, 7]
-    
+
+    # noinspection PyDefaultArgument
     def __init__(
             self,
             *args,
@@ -418,7 +426,7 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
         self._out_columns = tuple(out_columns + additional_columns)
 
     @property
-    def out_columns(self) -> tuple[str]:
+    def out_columns(self) -> tuple[str, ...]:
         """Return the list of columns to include in the output."""
         return self._out_columns
 
@@ -435,7 +443,7 @@ class TabularBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
     def parse_hits(
             cls,
             hits: io.BufferedIOBase,
-            columns: list[str],
+            columns: Sequence[str],
             dtypes: Optional[dict[str, str | np.dtype]] = None,
     ) -> pd.DataFrame:
         """Parse a table from the given file-like object with Pandas.
@@ -489,9 +497,10 @@ def blastn_from_files(*args, **kwargs) -> pd.DataFrame:
 def blastn_from_sequences(*args, **kwargs) -> pd.DataFrame:
     """Return the blastn results for the provided sequences."""
     with TabularBlastnSearch.from_sequences(*args, **kwargs) as search:
+        # noinspection PyUnresolvedReferences
         return search.hits
 
-def formatted_blastn_search(out_format: int | str) -> type:
+def formatted_blastn_search(out_format: int | str) -> type[BlastnSearch]:
     """Return an appropriate constructor for the given output format."""
     try:
         split = out_format.split()
