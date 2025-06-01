@@ -5,28 +5,30 @@ ncbi-blast+.  Currently, the library supports searches with `blastn` only, but I
 may expand the library to include wrappers for other BLAST executables if I need
 them.
 
-## Requirements
+## Dependencies
 
-This library depends on Pandas for parsing BLAST output. The library has been
-tested with Pandas 1.5.3, but it likely works with other versions.
+* Pandas (>= 1.5.6)
+* ncbi-blast+ (>= 2.12.0+)
 
-Of course, this library assumes that ncbi-blast+ is installed. The library has
-been tested with ncbi-blast 2.12.0+, and it likely works with newer versions of
-the software as well.
+### Optional
 
+* Biopython (>= 1.84, for SAM parsing and support for searching with SeqRecord)
+* [pyblast4_archive](https://github.com/actapia/pyblast4_archive/) (>= 0.0.4,
+  for decoding query/subject IDs in SAM format)
+  
 ## Basic usage
 
 You can define a `blastn` search to be carried out using the `BlastnSearch`
 class. `BlastnSearch`objects are constructed with two required
 arguments&mdash;the subject sequence and the query sequence files, in that
-order. For example, to set up a `balstn` search for sequences in `seqs1.fasta`
-against those in `seqs2.fasta` using output format 11 (BLAST Archive ASN.1), you
-could construct a `BlastnSearch` object like this:
+order. For example, to set up a `blastn` search for sequences in `seqs1.fasta`
+against those in `seqs2.fasta` using output format 12 (Seqalign), you could
+construct a `BlastnSearch` object like this:
 
 ```python
 from simple_blast import BlastnSearch
 
-search = BlastnSearch("seqs2.fasta", "seqs1.fasta", 11)
+search = BlastnSearch(21, "seqs1.fasta", "seqs2.fasta")
 ```
 
 The BLAST search is not carried out until you ask for the results by running the
@@ -45,7 +47,7 @@ HSPs. For that purpose, you can use `TabularBlastnSearch`.
 ```python
 from simple_blast import TabularBlastnSearch
 
-search = TabularBlastnSearch("seqs2.fasta", "seqs1.fasta", 11)
+search = TabularBlastnSearch("seqs1.fasta", "seqs2.fasta")
 ```
 
 The `hits` property of the search returns a Pandas dataframe containing the HSPs
@@ -98,7 +100,7 @@ queries = [
     )
 ]
 
-with TabularBlastnSearch.from_sequences(subjects, queries) as search:
+with TabularBlastnSearch.from_sequences(queries, subjects) as search:
     results = search.hits
 ```
 
@@ -124,7 +126,7 @@ subjects = [
 ]
 queries = ["TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"]
 
-with TabularBlastnSearch.from_sequences(subjects, queries) as search:
+with TabularBlastnSearch.from_sequences(queries, subjects as search:
     results = search.hits
 ```
 
@@ -136,7 +138,10 @@ in-memory sequences together with files by providing the `subject` or `query`
 keyword arguments to `from_sequences`.
 
 ```python
-BlastnSearch.from_sequences(["CATGAACTA"], query="seqs1.fasta")
+TabularBlastnSearch.from_sequences(
+    subject_seqs=["CATGAACTA"],
+	query="seqs1.fasta"
+)
 ```
 
 Since using a context manager is slightly cumbersome, you can also use the
@@ -162,7 +167,7 @@ subjects = [
 ]
 queries = ["TGGGAAACTCCACGCATCGGCGGGATTTCACAACGCCTAGAACACCGGTAATGCGAGTATCCGT"]
 
-results = blastn_from_sequences(subjects, queries)
+results = blastn_from_sequences(queries, subjects)
 ```
 
 **Note:** Searching from in-memory sequences is implemented using Unix FIFOs, so
@@ -192,10 +197,28 @@ When constructing a `BlastnSearch` object, give it the `BlastDBCache` as the
 searches.
 
 ```python
-search = BlastnSearch("seqs2.fasta", "seqs1.fasta", db_cache=cache)
+search = BlastnSearch(12, "seqs1.fasta", "seqs2.fasta", db_cache=cache)
 ```
 
 Now `search` will use the database we created for `seqs2.fasta`.
+
+## Explicit database searches
+
+Rather than searching against a FASTA file or a database created implicitly with
+BlastDBCache, you can also explicitly specify a database to query with the `db`
+keyword argument.
+
+```python
+search = BlastnSearch(12, "seqs1.fasta", db="mydb")
+```
+
+## Remote searches
+
+You can query the NCBI databases remotely using the `remote` parameter.
+
+```python
+search = BlastnSearch(12, "seqs1.fasta", db="nr", remote=True)
+```
 
 ## Format conversions
 
@@ -232,7 +255,7 @@ You can create a search with output format 11 using the
 ```python
 from simple_blast.multiformat import MultiformatBlastnSearch
 
-search = MultiformatBlastnSearch("seqs2.fasta", "seqs1.fasta")
+search = MultiformatBlastnSearch("seqs1.fasta", "seqs2.fasta")
 ```
 
 You can convert the output to another format using the `to` method.
