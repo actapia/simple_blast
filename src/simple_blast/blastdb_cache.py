@@ -63,13 +63,16 @@ def get_existing(
 
 
 def to_path_iterable(
-        ix: str | Iterable[str | os.PathLike],
+        ix: str | Iterable[str | Path] | Path,
         cls = frozenset
 ) -> Iterable[Path]:
     """Convert a string or an iterable of values to an iterable of Paths."""
     if isinstance(ix, str):
         ix = [Path(ix)]
-    return cls(map(Path, ix))
+    try:
+        return cls(map(Path, ix))
+    except TypeError:
+        return cls({ix})
 
 def convert_index(
         self_i: int = 0, paths_i: int = 1
