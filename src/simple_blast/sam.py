@@ -1,6 +1,10 @@
 import io
+import contextlib
+import functools
+import multiprocessing
 from typing import Optional
 from .blasting import SpecializedBlastnSearch, ParsedSearch
+from .fifo import BinaryWriterFifo, ReaderFifo
 
 try:
     import Bio.Align
@@ -44,6 +48,32 @@ try:
             return al    
 except ImportError:
     pass
+
+try:
+    import pysam
+
+    def do_merge(read_fifo, *fifos):
+        return pysam.samtools.merge("-o", read_fifo, *fifos)
+
+    def merge_sam_bytes(*sams):
+        with contextlib.ExitStack() as stack:
+            fifos = [BinaryWriterFifo(sam, suffix=".sam") for sam in sams]
+            for f in fifos:
+                stack.enter_context(f)                
+            reader = ReaderFifo(io_=io.BytesIO, mode="rb", suffix=".sam")
+            stack.enter_context(reader)
+            ctx = multiprocessing.get_context("spawn")
+            merge_proc = ctx.Process(
+                target=do_merge,
+                args=(reader.name,) + tuple(f.name for f in fifos)
+            )
+            merge_proc.start()
+            merge_proc.join()
+            return reader.get()
+
+except ModuleNotFoundError:
+    def merge_sam_bytes(*sams):
+        raise ModuleNotFoundError("pysam needed for merge_sam_bytes")
 
 class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
     """A BlastnSearch with Sequence Alignment Map (SAM) output.

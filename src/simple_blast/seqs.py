@@ -2,10 +2,11 @@ import io
 import os
 import tempfile
 import textwrap
+import functools
 from pathlib import Path
-from contextlib import AbstractContextManager
+from .fifo import WriterFIFO
+
 from collections.abc import Iterable
-from threading import Thread
 
 SeqType = str
 
@@ -34,44 +35,8 @@ def _write_fasta(seqs: Iterable[SeqType], path: Path):
                 pass
         _write_fasta_fallback(seqs, f)
 
-def _write_thread(*args, **kwargs):
-    _write_fasta(*args, **kwargs)
-
-class SeqsAsFile(AbstractContextManager):
+class SeqsAsFile(WriterFIFO):
     """Used for creating temporary FIFOs for sequences."""
     def __init__(self, seqs: Iterable[SeqType]):
         """Construct object for making a FIFO for the sequences."""
-        self._seqs = seqs
-        self._name = None
-
-    def create(self):
-        """Create the FIFO and prepare to write."""
-        self._name = tempfile.mktemp()
-        os.mkfifo(self.name)
-        self._write_thread = Thread(
-            target=_write_thread,
-            args=(self._seqs, self.name)
-        )
-        self._write_thread.start()
-
-    def __enter__(self):
-        self.create()
-        return self
-
-    @property
-    def name(self):
-        """Return the file path associated with the FIFO."""
-        return self._name
-
-    def destroy(self):
-        """Destroy the FIFO."""
-        if self._write_thread.is_alive():
-            # Try to kill.
-            #print("Trying to kill.")
-            os.open(self._name, os.O_NONBLOCK | os.O_RDONLY)
-            self._write_thread.join()
-        os.remove(self._name)
-        self._name = None
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.destroy()
+        super().__init__(functools.partial(_write_fasta, seqs))

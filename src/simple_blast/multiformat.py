@@ -6,7 +6,7 @@ from .blasting import (
     BlastnSearch
 )
 from .convert import blast_format_bytes
-from .sam import SAMBlastnSearch
+from .sam import SAMBlastnSearch, merge_sam_bytes
 
 class MultiformatBlastnSearch(SpecializedBlastnSearch):
     """A BlastnSearch using Blast4 archive (ASN.1) output for easy conversion.
@@ -95,19 +95,26 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
         Returns:
             A SAMBlastnSearch converted from this search.
         """
+        import pyblast4_archive
+        b4s = pyblast4_archive.Blast4Archive.from_bytes(
+            self.output,
+            "asn_text"
+        )
+        sams = [
+            blast_format_bytes(
+                SAMBlastnSearch.out_formats[0], str(b4).encode("utf-8")
+            ) for b4 in b4s
+        ]
+        #from IPython import embed; embed()
+        res = merge_sam_bytes(*sams)
         decode_query = {}
         decode_subject = {}
         if decode:
-            import pyblast4_archive
-            b4 = pyblast4_archive.Blast4Archive.from_bytes(
-                self.output,
-                "asn_text"
-            )
-            decode_query = pyblast4_archive.decode_query_ids(b4)
-            decode_subject = pyblast4_archive.decode_subject_ids(b4)
+            decode_query = pyblast4_archive.decode_query_ids(b4s)
+            decode_subject = pyblast4_archive.decode_subject_ids(b4s)
         # noinspection PyProtectedMember
-        return SAMBlastnSearch._load_results(
-            self.to(17),
+        sam = SAMBlastnSearch._load_results(
+            res,
             subject = self.subject,
             query = self.query,
             evalue = self.evalue,
@@ -122,6 +129,8 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
             decode_target = decode_query,
             decode_query = decode_subject
         )
+        #from IPython import embed; embed()
+        return sam
 
     @classmethod
     def _load_results(cls, res, **kwargs):
