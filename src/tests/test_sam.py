@@ -75,7 +75,6 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
                 1
             )
             sam_search =  multi_search.to_sam()
-            from IPython import embed; embed()
             for al in sam_search.hits:
                 self.assertEqual(
                     al.target.id.removeprefix("query_"),
