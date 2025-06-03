@@ -1,8 +1,13 @@
+import random
 from simple_blast.multiformat import MultiformatBlastnSearch
 from simple_blast.sam import SAMBlastnSearch
 from .simple_blast_test import (
     SimpleBlastTestCase,
 )
+from Bio import SeqIO
+from Bio.Seq import Seq
+
+large_size = 5001
 
 class TestSAMBlastnSearch(SimpleBlastTestCase):
     def test_basic_search(self):
@@ -31,3 +36,48 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
                     al.query.id
                 )
 
+    def test_large_search(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        random.seed(485)
+        subjects = [
+            SeqIO.SeqRecord(
+                Seq("".join(random.choices("ATCG", k=large_size*2))),
+                id=f"subject_{i}", name="", description=""
+            )
+            for i in range(2)
+        ]
+        queries = [
+            SeqIO.SeqRecord(
+                subjects[i].seq[a:a+large_size],
+                id=f"query_{i}",
+                name="",
+                description=""
+            )
+            for (i, a) in enumerate(
+                    [
+                        random.randint(0, large_size - 1) for _ in range(2)
+                    ]
+            )
+        ]
+        with MultiformatBlastnSearch.from_sequences(
+                queries,
+                subjects
+        ) as multi_search:
+            b4s = pyblast4_archive.Blast4Archive.from_bytes(
+                multi_search.output,
+                "asn_text"
+            )
+            self.assertGreater(
+                len(b4s),
+                1
+            )
+            sam_search =  multi_search.to_sam()
+            from IPython import embed; embed()
+            for al in sam_search.hits:
+                self.assertEqual(
+                    al.target.id.removeprefix("query_"),
+                    al.query.id.removeprefix("subject_")
+                )
