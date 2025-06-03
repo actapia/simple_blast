@@ -13,7 +13,7 @@ them.
 ### Optional
 
 * Biopython (>= 1.84, for SAM parsing and support for searching with SeqRecord)
-* [pyblast4_archive](https://github.com/actapia/pyblast4_archive/) (>= 0.0.4,
+* [pyblast4_archive](https://github.com/actapia/pyblast4_archive/) (>= 0.0.6,
   for decoding query/subject IDs in SAM format)
   
 ## Basic usage
