@@ -1,6 +1,6 @@
 import random
 from simple_blast.multiformat import MultiformatBlastnSearch
-from simple_blast.sam import SAMBlastnSearch
+from simple_blast.sam import SAMBlastnSearch, merge_sam_bytes
 from .simple_blast_test import (
     SimpleBlastTestCase,
 )
@@ -80,3 +80,23 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
                     al.target.id.removeprefix("query_"),
                     al.query.id.removeprefix("subject_")
                 )
+
+    def test_empty_merge(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        self.assertEqual(merge_sam_bytes(), b'')
+
+    def test_empty_results(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        search = MultiformatBlastnSearch(
+            self.data_dir / "queries.fasta",
+            self.data_dir / "no_matches.fasta",
+        )
+        self.assertEqual(list(search.to_sam().hits), [])
+        
+

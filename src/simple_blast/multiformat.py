@@ -105,6 +105,7 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
                 SAMBlastnSearch.out_formats[0], str(b4).encode("utf-8")
             ) for b4 in b4s
         ]
+        sams = [s for s in sams if s]
         #from IPython import embed; embed()
         res = merge_sam_bytes(*sams)
         decode_query = {}

@@ -53,7 +53,8 @@ try:
     import pysam
 
     def do_merge(read_fifo, *fifos):
-        return pysam.samtools.merge("-o", read_fifo, *fifos)
+        if fifos:
+            pysam.samtools.merge("-o", read_fifo, *fifos)
 
     def merge_sam_bytes(*sams):
         with contextlib.ExitStack() as stack:
@@ -69,6 +70,8 @@ try:
             )
             merge_proc.start()
             merge_proc.join()
+            if merge_proc.exitcode != 0:
+                raise multiprocessing.ProcessError("samtools failed")
             return reader.get()
 
 except ModuleNotFoundError:

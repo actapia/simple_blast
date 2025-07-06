@@ -100,5 +100,6 @@ class ReaderFifo(FIFO):
     def destroy(self):
         """Destroy the FIFO."""
         if self._read_thread.is_alive():
+            os.close(os.open(self._name, os.O_NONBLOCK | os.O_WRONLY))
             self._read_thread.join()
         super().destroy()
