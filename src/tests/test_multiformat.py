@@ -1,9 +1,11 @@
 import io
+import tempfile
 
 from simple_blast.blasting import (
     TabularBlastnSearch,
-    default_out_columns
+    default_out_columns,
 )
+from simple_blast.blastdb_cache import BlastDBCache
 from simple_blast.multiformat import MultiformatBlastnSearch
 from simple_blast.sam import SAMBlastnSearch
 from .simple_blast_test import (
@@ -74,3 +76,50 @@ class TestMultiformatBlastnSearch(SimpleBlastTestCase):
             self.assertTrue(al.target.id.startswith("Query_"))
             self.assertTrue(al.query.id.startswith("Subject_"))
 
+    def test_empty_to_sam(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        search = MultiformatBlastnSearch(
+            self.data_dir / "queries.fasta",
+            self.data_dir / "no_matches.fasta",
+        )
+        self.assertEqual(list(search.to_sam().hits), [])
+
+    def test_sam_SR(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        for subject in self.data_dir.glob("seqs_*.fasta"):
+            multi_search = MultiformatBlastnSearch(
+                self.data_dir / "queries.fasta",
+                subject,
+            )
+            for al in multi_search.to_sam(subject_as_reference=True).hits:
+                self.assertEqual(
+                    al.query.id.removeprefix("from_"),
+                    al.target.id
+                )
+
+    def test_sam_from_db(self):
+        try:
+            import pyblast4_archive
+        except ImportError:
+            self.skipTest("pyblast4_archive not installed.")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            cache = BlastDBCache(temp_dir)
+            for subject in self.data_dir.glob("seqs_*.fasta"):
+                cache.makedb(subject)
+                multi_search = MultiformatBlastnSearch(
+                    self.data_dir / "queries.fasta",
+                    subject,
+                    db_cache=cache
+                )
+                for al in multi_search.to_sam().hits:
+                    self.assertEqual(
+                        al.target.id.removeprefix("from_"),
+                        al.query.id
+                    )
+            

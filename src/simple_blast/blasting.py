@@ -220,15 +220,21 @@ class BlastnSearch(metaclass=BlastnSearchMetaclass):
         """Return the output format to use for the search output."""
         return self._out_format
 
-    def _build_blast_command(self) -> Command:
-        command = Command()
-        command += ["blastn"]
+    def get_db(self) -> Optional[str]:
+        """Get the path to the BLAST database used, if any."""
         if self.db is not None:
-            command |= {"-db": self.db}
+            return self.db
         if self._db_cache and \
            self.seq1_path and \
            self.seq1_path in self._db_cache:
-            command |= {"-db": str(self._db_cache[self.seq1_path])}
+            return str(self._db_cache[self.seq1_path])
+        return None
+
+    def _build_blast_command(self) -> Command:
+        command = Command()
+        command += ["blastn"]
+        if (db := self.get_db()) is not None:
+            command |= {"-db": db}
         elif self.seq1_path is not None:
             if len(self.seq1_path) > 1:
                 raise NotInDatabaseError(

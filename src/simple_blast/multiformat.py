@@ -81,7 +81,11 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
             debug = self.debug
         )
 
-    def to_sam(self, decode: bool = True) -> SAMBlastnSearch:
+    def to_sam(
+            self,
+            decode: bool = True,
+            subject_as_reference: bool = False,
+    ) -> SAMBlastnSearch:
         """Convert this search to SAM format.
 
         By default, ncbi-blast+ uses its "internal" subject and query names
@@ -90,7 +94,8 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
         search output.
 
         Parameters:
-            decode (bool): Whether to correct the subject/query names.
+            decode (bool):               Correct the subject/query names.
+            subject_as_reference (bool): Use subject sequences as references.
 
         Returns:
             A SAMBlastnSearch converted from this search.
@@ -100,19 +105,34 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
             self.output,
             "asn_text"
         )
+        out_format = SAMBlastnSearch.out_formats[0]
+        if subject_as_reference:
+            out_format = f"{out_format} SR"
         sams = [
-            blast_format_bytes(
-                SAMBlastnSearch.out_formats[0], str(b4).encode("utf-8")
-            ) for b4 in b4s
+            blast_format_bytes(out_format, str(b4).encode("utf-8"))
+            for b4 in b4s
         ]
         sams = [s for s in sams if s]
-        #from IPython import embed; embed()
+        #
         res = merge_sam_bytes(*sams)
         decode_query = {}
         decode_subject = {}
         if decode:
             decode_query = pyblast4_archive.decode_query_ids(b4s)
             decode_subject = pyblast4_archive.decode_subject_ids(b4s)
+            if (db_path := self.get_db()) is not None and not self.remote:
+                #from IPython import embed; embed()
+                db = pyblast4_archive.SeqDB(db_path, "nucleotide")
+                decode_subject |= {
+                    f"BL_ORD_ID:{k}": v
+                    for (k, v)
+                    in pyblast4_archive.decode_database_oids(b4s, db).items()
+                }
+            if subject_as_reference:
+                tmp = decode_subject
+                decode_subject = decode_query
+                decode_query = tmp
+        #from IPython import embed; embed()
         # noinspection PyProtectedMember
         sam = SAMBlastnSearch._load_results(
             res,

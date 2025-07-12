@@ -120,3 +120,6 @@ class Command:
 
     def __str__(self):
         return " ".join(self.argument_iter())
+
+    def __contains__(self, k):
+        return k in self._mult

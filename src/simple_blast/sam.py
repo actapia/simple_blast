@@ -5,6 +5,7 @@ import multiprocessing
 from typing import Optional
 from .blasting import SpecializedBlastnSearch, ParsedSearch
 from .fifo import BinaryWriterFifo, ReaderFifo
+from .blast_command import Command
 
 try:
     import Bio.Align
@@ -22,7 +23,7 @@ try:
                 self,
                 source: str | io.TextIOBase,
                 rename_query: dict[str, str],
-                rename_target: dict[str, str]
+                rename_target: dict[str, str],
         ):
             """Construct a RenamedSamAlignmentIterator with given rename dicts.
 
@@ -95,6 +96,7 @@ class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
                  *args,
                  decode_query: Optional[dict[str, str]] = None,
                  decode_target: Optional[dict[str, str]] = None,
+                 subject_as_reference: bool = False,
                  **kwargs
     ):
         """Construct a SAMBlastnSearch with the given parameters.
@@ -105,13 +107,26 @@ class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
         decode sequence names, and a sequence name is not present in the dict,
         the original sequence name will be retained.
 
+        Confusingly, BLASTn ordinarily outputs SAM files where the queries in
+        the BLASTn search become the references in the SAM alignment, and the
+        subjects in the BLASTn search become the queries in the SAM alignment.
+        SAMBlastnSearch preserves this default behavior, but the subjects can
+        instead be used as a reference by passing subject_as_reference=True to
+        this constructor.
+
         Parameters:
-            decode_query (dict):  Renames queries in the parsed output.
-            decode_target (dict): Renames targets in the parsed output.
+            decode_query (dict):         Renames queries in the parsed output.
+            decode_target (dict):        Renames targets in the parsed output.
+            subject_as_reference (bool): Let the subject be the reference.
         """
         super().__init__(*args, **kwargs)
         self._decode_query = decode_query
         self._decode_target = decode_target
+        self._subject_as_reference = subject_as_reference
+
+    @property
+    def subject_as_reference(self):
+        return self._subject_as_reference
 
     @classmethod
     def parse_hits(
@@ -146,6 +161,16 @@ class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
             decode_query,
             decode_target
         )
+
+    def _build_blast_command(self) -> Command:
+        command = super()._build_blast_command()
+        if self.subject_as_reference:
+            command.set(
+                "-outfmt",
+                " ".join([str(command.get("-outfmt")[0])] + ["SR"])
+            )
+        return command
+
 
     def _parse_hits(self, hits):
         return self.parse_hits(hits, self._decode_query, self._decode_target)

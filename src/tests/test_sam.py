@@ -88,15 +88,29 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
             self.skipTest("pyblast4_archive not installed.")
         self.assertEqual(merge_sam_bytes(), b'')
 
-    def test_empty_results(self):
-        try:
-            import pyblast4_archive
-        except ImportError:
-            self.skipTest("pyblast4_archive not installed.")
-        search = MultiformatBlastnSearch(
-            self.data_dir / "queries.fasta",
-            self.data_dir / "no_matches.fasta",
-        )
-        self.assertEqual(list(search.to_sam().hits), [])
-        
+
+    def test_search_SR(self):
+        for subject in self.data_dir.glob("seqs_*.fasta"):
+            search = SAMBlastnSearch(
+                self.data_dir / "queries.fasta",
+                subject,
+            )
+            SR_search = SAMBlastnSearch(
+                self.data_dir / "queries.fasta",
+                subject,
+                subject_as_reference=True
+            )
+            targets = set()
+            queries = set()
+            for al in search.hits:
+                targets.add(al.target.id)
+                queries.add(al.query.id)
+            SR_targets = set()
+            SR_queries = set()
+            for al in SR_search.hits:
+                SR_targets.add(al.target.id)
+                SR_queries.add(al.query.id)
+            self.assertEqual(targets, SR_queries)
+            self.assertEqual(queries, SR_targets)
+
 
