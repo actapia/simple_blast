@@ -2,7 +2,9 @@ import io
 import os
 import tempfile
 import textwrap
+import threading
 import functools
+import time
 from pathlib import Path
 from .fifo import WriterFIFO
 
@@ -18,25 +20,25 @@ try:
 except ImportError:
     Bio = None
 
-def _write_fasta_fallback(seqs: Iterable[str], f: io.TextIOBase):
+def _write_fasta_fallback(f: io.TextIOBase, seqs: Iterable[str]):
     for i, s in enumerate(seqs):
         f.write(
             ">seq_{}\n{}\n".format(i, textwrap.fill(s, width=80))
         )
     f.flush()
 
-def _write_fasta(seqs: Iterable[SeqType], path: Path):
-    with open(path, "w") as f:
+def _write_fasta(open_, seqs: Iterable[SeqType]):
+    with open_("w") as f:
         if Bio is not None:
             try:
                 Bio.SeqIO.write(seqs, f, "fasta")
                 return
             except AttributeError:
                 pass
-        _write_fasta_fallback(seqs, f)
+        _write_fasta_fallback(f, seqs)
 
 class SeqsAsFile(WriterFIFO):
     """Used for creating temporary FIFOs for sequences."""
     def __init__(self, seqs: Iterable[SeqType]):
         """Construct object for making a FIFO for the sequences."""
-        super().__init__(functools.partial(_write_fasta, seqs))
+        super().__init__(functools.partial(_write_fasta, seqs=seqs))

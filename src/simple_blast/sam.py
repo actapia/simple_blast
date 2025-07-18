@@ -62,7 +62,7 @@ try:
             fifos = [BinaryWriterFifo(sam, suffix=".sam") for sam in sams]
             for f in fifos:
                 stack.enter_context(f)                
-            reader = ReaderFifo(io_=io.BytesIO, mode="rb", suffix=".sam")
+            reader = ReaderFifo(io_=io.BytesIO, read_mode="rb", suffix=".sam")
             stack.enter_context(reader)
             ctx = multiprocessing.get_context("spawn")
             merge_proc = ctx.Process(
@@ -72,6 +72,7 @@ try:
             merge_proc.start()
             merge_proc.join()
             if merge_proc.exitcode != 0:
+                from IPython import embed; embed()
                 raise multiprocessing.ProcessError("samtools failed")
             return reader.get()
 

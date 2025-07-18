@@ -1,6 +1,7 @@
 import tempfile
 import pandas as pd
 import Bio
+import functools
 import simple_blast.seqs
 from unittest.mock import patch, ANY
 from simple_blast.blasting import (
@@ -47,18 +48,21 @@ class TestSeqs(SimpleBlastTestCase):
         
     def test_write_fasta_fallback(self):
         with tempfile.NamedTemporaryFile(mode="wt") as temp_file:
-            _write_fasta_fallback(self.data, temp_file)
+            _write_fasta_fallback(temp_file, self.data)
             self.verify_test_data(temp_file.name)
 
     def test_write_fasta(self):
         with tempfile.NamedTemporaryFile() as temp_file:
             # Test write with SeqIO.
-            _write_fasta(self.seqio_data, temp_file.name)
+            _write_fasta(
+                functools.partial(open, temp_file.name),
+                self.seqio_data
+            )
             self.assertSeqIOSequencesEqual(
                 SeqIO.parse(temp_file.name, "fasta"), self.seqio_data
             )
             # Test write with str sequences.
-            _write_fasta(self.data, temp_file.name)
+            _write_fasta(functools.partial(open, temp_file.name), self.data)
             self.verify_test_data(temp_file.name)
             # Test without SeqIO.
             with (
@@ -71,10 +75,13 @@ class TestSeqs(SimpleBlastTestCase):
                             "_write_fasta_fallback"
                         ) as fallback_write
                 ):
-                    _write_fasta(self.seqio_data, temp_file.name)
+                    _write_fasta(
+                        functools.partial(open, temp_file.name),
+                        self.seqio_data
+                    )
                     seqio_write.assert_not_called()
-                    fallback_write.assert_called_with(self.seqio_data, ANY)
-                _write_fasta(self.data, temp_file.name)
+                    fallback_write.assert_called_with(ANY, self.seqio_data)
+                _write_fasta(functools.partial(open, temp_file.name), self.data)
                 self.verify_test_data(temp_file.name)
                 
 
