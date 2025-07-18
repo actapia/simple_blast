@@ -4,7 +4,7 @@ import functools
 import multiprocessing
 from typing import Optional
 from .blasting import SpecializedBlastnSearch, ParsedSearch
-from .fifo import BinaryWriterFifo, ReaderFifo
+from .fifo import BinaryWriterFIFO, ReaderFIFO
 from .blast_command import Command
 
 try:
@@ -59,10 +59,10 @@ try:
 
     def merge_sam_bytes(*sams):
         with contextlib.ExitStack() as stack:
-            fifos = [BinaryWriterFifo(sam, suffix=".sam") for sam in sams]
+            fifos = [BinaryWriterFIFO(sam, suffix=".sam") for sam in sams]
             for f in fifos:
                 stack.enter_context(f)                
-            reader = ReaderFifo(io_=io.BytesIO, read_mode="rb", suffix=".sam")
+            reader = ReaderFIFO(io_=io.BytesIO, read_mode="rb", suffix=".sam")
             stack.enter_context(reader)
             ctx = multiprocessing.get_context("spawn")
             merge_proc = ctx.Process(
