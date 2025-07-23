@@ -53,20 +53,22 @@ except ImportError:
 try:
     import pysam
 
-    def do_merge(read_fifo, *fifos):
+    def samtools_fifo(f, read_fifo, *fifos):
         if fifos:
-            pysam.samtools.merge("-o", read_fifo, *fifos)
+            getattr(pysam.samtools, f)("-o", read_fifo, *fifos)
 
-    def merge_sam_bytes(*sams):
+    def fifo_run_samtools(samtools_fun, *sams):
         with contextlib.ExitStack() as stack:
-            fifos = [BinaryWriterFIFO(sam, suffix=".sam") for sam in sams]
+            fifos = [
+                BinaryWriterFIFO(sam, suffix=".sam") for sam in sams if sam
+            ]
             for f in fifos:
                 stack.enter_context(f)                
             reader = ReaderFIFO(io_=io.BytesIO, read_mode="rb", suffix=".sam")
             stack.enter_context(reader)
             ctx = multiprocessing.get_context("spawn")
             merge_proc = ctx.Process(
-                target=do_merge,
+                target=samtools_fun,
                 args=(reader.name,) + tuple(f.name for f in fifos)
             )
             merge_proc.start()
@@ -75,6 +77,15 @@ try:
                 from IPython import embed; embed()
                 raise multiprocessing.ProcessError("samtools failed")
             return reader.get()
+
+    def fifo_samtools(name):
+        return functools.partial(
+            fifo_run_samtools,
+            functools.partial(samtools_fifo, name)
+        )
+
+    merge_sam_bytes = fifo_samtools("merge")
+    sort_sam_bytes = fifo_samtools("sort")
 
 except ModuleNotFoundError:
     def merge_sam_bytes(*sams):

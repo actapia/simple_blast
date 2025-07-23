@@ -6,7 +6,7 @@ from .blasting import (
     BlastnSearch
 )
 from .convert import blast_format_bytes
-from .sam import SAMBlastnSearch, merge_sam_bytes
+from .sam import SAMBlastnSearch, merge_sam_bytes, sort_sam_bytes
 
 class MultiformatBlastnSearch(SpecializedBlastnSearch):
     """A BlastnSearch using Blast4 archive (ASN.1) output for easy conversion.
@@ -85,6 +85,7 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
             self,
             decode: bool = True,
             subject_as_reference: bool = False,
+            sort: bool = True,
     ) -> SAMBlastnSearch:
         """Convert this search to SAM format.
 
@@ -115,6 +116,8 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
         sams = [s for s in sams if s]
         #
         res = merge_sam_bytes(*sams)
+        if sort:
+            res = sort_sam_bytes(res)
         decode_query = {}
         decode_subject = {}
         if decode:
@@ -150,6 +153,7 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
             decode_target = decode_query,
             decode_query = decode_subject
         )
+        sam._output = res
         #from IPython import embed; embed()
         return sam
 
