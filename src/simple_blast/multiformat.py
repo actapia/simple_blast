@@ -97,6 +97,7 @@ class MultiformatBlastnSearch(SpecializedBlastnSearch):
         Parameters:
             decode (bool):               Correct the subject/query names.
             subject_as_reference (bool): Use subject sequences as references.
+            sort (bool):                 Sort the SAM output using samtools.
 
         Returns:
             A SAMBlastnSearch converted from this search.
