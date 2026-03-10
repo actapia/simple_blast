@@ -91,6 +91,9 @@ except ModuleNotFoundError:
     def merge_sam_bytes(*sams):
         raise ModuleNotFoundError("pysam needed for merge_sam_bytes")
 
+    def sort_sam_bytes(*sams):
+        raise ModuleNotFoundError("pysam needed for sort_sam_bytes")    
+
 class SAMBlastnSearch(ParsedSearch, SpecializedBlastnSearch):
     """A BlastnSearch with Sequence Alignment Map (SAM) output.
 
