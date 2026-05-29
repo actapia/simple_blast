@@ -12,11 +12,11 @@ on:
       - '!*.md'
 
 jobs:
-  test:
-    name: Run tests
+  test-ubuntu:
+    name: Test on Ubuntu
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,5 +33,32 @@ jobs:
         run: python -m pip install biopython
       - name: Install pysam
         run: python -m pip install pysam
+      - name: Install pyblast4_archive
+        run: python -m pip install pyblast4_archive
+      - name: Run tests
+        run: cd src && python -m unittest -f
+  test-macos:
+    name: Test on macOS
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install blast
+        run: >-
+          brew install blast
+      - name: Install package
+        run: python -m pip install .
+      - name: Install BioPython
+        run: python -m pip install biopython
+      - name: Install pysam
+        run: python -m pip install pysam
+      - name: Install pyblast4_archive
+        run: python -m pip install pyblast4_archive
       - name: Run tests
         run: cd src && python -m unittest -f
