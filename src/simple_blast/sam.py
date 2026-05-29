@@ -76,7 +76,8 @@ try:
             if merge_proc.exitcode != 0:
                 from IPython import embed; embed()
                 raise multiprocessing.ProcessError("samtools failed")
-            return reader.get()
+        return reader.get()
+            
 
     def fifo_samtools(name):
         return functools.partial(

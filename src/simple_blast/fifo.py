@@ -274,14 +274,16 @@ class ReaderFIFO(IOFIFO):
             read_mode: str = "r",
             suffix: str = "",
             ignore_enxio: bool = True,
+            darwin_poll_timeout: int = 1000
     ):
         """Construct a ReaderFIFO.
 
         Parameters:
-            io_:                 Callable to make file-like object for writing.
-            read_mode (str):     Mode in which to open FIFO for reading.
-            suffix (str):        Suffix to use for FIFO temporary file.
-            ignore_enxio (bool): Ignore ENXIO signals during cleanup.
+            io_:                       Callable to make writing file-like.
+            read_mode (str):           Mode in which to open FIFO for reading.
+            suffix (str):              Suffix to use for FIFO temporary file.
+            ignore_enxio (bool):       Ignore ENXIO signals during cleanup.
+            darwin_poll_timeout (int): Poll timeout before retry on Darwin.
         """
         super().__init__(
             read_thread,
@@ -289,9 +291,11 @@ class ReaderFIFO(IOFIFO):
             os.O_WRONLY | os.O_NONBLOCK,
             suffix=suffix
         )
+        self._stop_poll = Event()
         self._io = io_()
         self._read_mode = read_mode
         self._ignore_enxio = ignore_enxio
+        self._poll_timeout = darwin_poll_timeout
 
     @property
     def io(self) -> IO:
@@ -301,15 +305,27 @@ class ReaderFIFO(IOFIFO):
     def _post_open(self, f: IO):
         super()._post_open(f)
         poll = select.poll()
-        poll.register(f.fileno(), select.POLLIN)
-        poll.poll()
-        fcntl.fcntl(f.fileno(), fcntl.F_SETFL, self._mode & ~os.O_NONBLOCK)
+        poll.register(f.fileno(), select.POLLIN)        
+        if os.uname().sysname == "Darwin":
+            # This is necessary to workaround an apparent bug in which macOS
+            # fails to deliver EPOLLIN or EPOLLHUP when the writing side of the
+            # FIFO is closed. Neither Linux nor FreeBSD seem to have the same
+            # problem.
+            while True:
+                poll.poll(self._poll_timeout)
+                if self._stop_poll.is_set():
+                    break
+        else:
+            poll.poll()
+        if os.uname().sysname != "Darwin" or self._stop_poll.is_set():
+            fcntl.fcntl(f.fileno(), fcntl.F_SETFL, self._mode & ~os.O_NONBLOCK)
 
     def _clean_up_thread(self):
         self._opened.wait()
         try:
             fd = os.open(self._name, self._destroy_mode)
             os.close(fd)
+            self._stop_poll.set()
         except OSError as e:
             if not self._ignore_enxio or e.args[0] != errno.ENXIO:
                 raise e

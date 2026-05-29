@@ -108,7 +108,6 @@ class TestSAMBlastnSearch(SimpleBlastTestCase):
         )
         group_key = lambda x: x.target
         sort_key = lambda x: x.coordinates[0,0]
-        #from IPython import embed; embed()
         self.assertTrue(
             any(
                 is_not_sorted(l, key=sort_key) for (g, l) in groupby(
